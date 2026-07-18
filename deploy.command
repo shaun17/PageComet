@@ -36,7 +36,8 @@ if (( exit_status == 0 )); then
   installed_fingerprint=""
   [[ -f "$dependency_marker" ]] && installed_fingerprint="$(<"$dependency_marker")"
 
-  if [[ "$installed_fingerprint" != "$dependency_fingerprint" ]]; then
+  # 缓存标记存在但依赖被手动裁剪或损坏时，同样执行完整恢复。
+  if [[ "$installed_fingerprint" != "$dependency_fingerprint" ]] || ! npm ls --depth=0 --include=dev --silent >/dev/null 2>&1; then
     echo "正在安装项目依赖……"
     # 显式包含构建依赖，防止机器级 NODE_ENV 或 npm omit 配置跳过 Astro、TypeScript 与 Wrangler。
     if npm ci --include=dev; then
