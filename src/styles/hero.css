@@ -67,9 +67,9 @@
   margin-top: clamp(1.75rem, 3.2vw, 2.75rem);
   margin-left: auto;
   color: var(--text-muted);
-  font-size: clamp(0.76rem, 0.9vw, 0.84rem);
+  font-size: clamp(1rem, 1.15vw, 1.125rem);
   letter-spacing: 0.025em;
-  line-height: 1.7;
+  line-height: 1.65;
   text-align: right;
   animation: content-reveal 420ms 80ms ease-out both;
 }

@@ -46,7 +46,6 @@
 }
 
 .column-index,
-.column-note,
 .directory-links {
   font-family: var(--font-mono);
 }
@@ -55,15 +54,6 @@
   color: var(--text-muted);
   font-size: 0.68rem;
   letter-spacing: 0.1em;
-}
-
-.column-note {
-  max-width: 27ch;
-  margin: 0 0 1.5rem;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  letter-spacing: 0.02em;
-  line-height: 1.7;
 }
 
 .directory-links {

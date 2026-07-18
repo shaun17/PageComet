@@ -45,6 +45,7 @@ test("builds the complete three-column homepage", async () => {
   assert.match(html, /wenren 在做/);
   assert.match(html, /喜欢运动与健身。/);
   assert.match(html, /也在结识更多有趣的朋友。/);
+  assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
   assert.equal((html.match(/class="directory-column"/g) ?? []).length, 3);
   assert.ok(findAnchor(html, "/career/"));
   assert.ok(findAnchor(html, "/works/"));

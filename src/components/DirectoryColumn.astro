@@ -20,7 +20,6 @@ const visibleEntries = entries.slice(0, 4);
     <h2 id={headingId}><a href={category.path}>{category.label}</a></h2>
   </div>
 
-  {category.key === "journal" && <p class="column-note">{category.description}</p>}
   <ul class="directory-links">
     {
       visibleEntries.map((entry) => {
