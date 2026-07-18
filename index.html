@@ -47,8 +47,9 @@
         </div>
       </section>
 
-      <!-- 所有内容入口集中在底部三列，并直接指向公开 Notion 页面。 -->
-      <footer class="directory" aria-label="内容目录">
+      <footer class="site-footer">
+        <!-- 所有内容入口集中在底部三列，并直接指向公开 Notion 页面。 -->
+        <nav class="directory" aria-label="内容目录">
         <section class="directory-column" aria-labelledby="career-title">
           <div class="column-heading">
             <span class="column-index" aria-hidden="true">01</span>
@@ -182,6 +183,13 @@
             </li>
           </ul>
         </section>
+        </nav>
+
+        <!-- 联系方式保持为两个清晰的文字按钮，避免图标降低辨识度。 -->
+        <nav class="contact-links" aria-label="联系方式">
+          <a href="https://x.com/thisiswenren" target="_blank" rel="noopener noreferrer" aria-label="在 X 上查看 Wenren">X</a>
+          <a href="mailto:wenrencc@gmail.com" aria-label="发送邮件至 wenrencc@gmail.com">Mail</a>
+        </nav>
       </footer>
     </main>
   </body>

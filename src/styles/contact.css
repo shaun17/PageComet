@@ -1,0 +1,45 @@
+.contact-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--text-primary);
+  font-family: var(--font-mono);
+  animation: content-reveal 420ms 160ms ease-out both;
+}
+
+.contact-links a {
+  display: inline-flex;
+  min-width: 3.6rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--text-primary);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.contact-links a:focus-visible {
+  border-radius: 999px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .contact-links a:hover {
+    background: var(--text-primary);
+    color: var(--page-background);
+  }
+}
+
+/* 手机端维持 44px 触控高度，并让按钮与内容列左边缘对齐。 */
+@media (max-width: 600px) {
+  .contact-links {
+    justify-content: flex-start;
+  }
+}

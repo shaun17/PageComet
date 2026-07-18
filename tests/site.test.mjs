@@ -41,6 +41,13 @@ function extractNotionAnchors(html) {
   );
 }
 
+// 按目标地址找到完整链接标签，确保联系入口不会在构建中丢失属性。
+function extractAnchorByHref(html, href) {
+  return (html.match(/<a\b[^>]*>/gi) ?? []).find((tag) =>
+    tag.includes(`href="${href}"`),
+  );
+}
+
 // 首页必须保留完整内容、三列语义以及安全的 Notion 外链。
 test("builds the complete personal homepage", async () => {
   const { html, css } = await loadBuild();
@@ -56,6 +63,14 @@ test("builds the complete personal homepage", async () => {
   assert.match(html, /CoolBox/);
   assert.match(html, /Petly Care/);
   assert.match(html, /IDPhotoMaker/);
+  assert.match(html, /<nav class="contact-links" aria-label="联系方式">/i);
+  const contactMarkup = html.match(
+    /<nav class="contact-links"[^>]*>([\s\S]*?)<\/nav>/i,
+  )?.[1];
+  assert.ok(contactMarkup, "页面应包含完整的联系导航");
+  assert.equal((contactMarkup.match(/<a\b[^>]*>/gi) ?? []).length, 2);
+  assert.match(contactMarkup, />X<\/a>/);
+  assert.match(contactMarkup, />Mail<\/a>/);
   const notionAnchors = extractNotionAnchors(html);
   assert.equal(notionAnchors.length, 14);
   for (const anchor of notionAnchors) {
@@ -69,10 +84,22 @@ test("builds the complete personal homepage", async () => {
     ),
   ].filter(Boolean);
   assert.deepEqual(actualUrls.sort(), expectedNotionUrls.toSorted());
+
+  const xAnchor = extractAnchorByHref(html, "https://x.com/thisiswenren");
+  const mailAnchor = extractAnchorByHref(html, "mailto:wenrencc@gmail.com");
+  assert.ok(xAnchor, "页面应包含 X 联系按钮");
+  assert.match(xAnchor, /target="_blank"/);
+  assert.match(xAnchor, /rel="noopener noreferrer"/);
+  assert.match(xAnchor, /aria-label="在 X 上查看 Wenren"/);
+  assert.ok(mailAnchor, "页面应包含 Mail 联系按钮");
+  assert.match(mailAnchor, /aria-label="发送邮件至 wenrencc@gmail.com"/);
+  assert.doesNotMatch(mailAnchor, /target=/);
   assert.doesNotMatch(html, /_next|vinext|codex-preview|react-loading-skeleton/i);
   assert.match(css, /prefers-color-scheme:dark/);
   assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css, /font-family:Geist/);
+  assert.match(css, /\.contact-links a\{/);
+  assert.match(css, /min-height:2\.75rem/);
 });
 
 // Pages 配置和响应头必须随构建结果一起交付。
