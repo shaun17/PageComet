@@ -1,0 +1,112 @@
+.site-shell {
+  width: 100%;
+  max-width: 100rem;
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 0 var(--page-gutter) clamp(2rem, 5vw, 4.5rem);
+}
+
+.hero {
+  display: flex;
+  min-height: clamp(37rem, 72svh, 52rem);
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(3rem, 8vw, 8.75rem) 0 clamp(2.5rem, 6vw, 5.5rem);
+}
+
+.hero-kicker,
+.hero-meta {
+  font-family: var(--font-geist-mono), "SFMono-Regular", Consolas,
+    "Liberation Mono", monospace;
+}
+
+.hero-kicker {
+  margin: 0 0 clamp(2rem, 5vw, 4.75rem);
+  color: var(--text-muted);
+  font-size: clamp(0.67rem, 0.9vw, 0.82rem);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  animation: content-reveal 420ms ease-out both;
+}
+
+.hero h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(4.1rem, 8.5vw, 8.5rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+  animation: content-reveal 480ms ease-out both;
+}
+
+.hero h1 a {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.13em;
+}
+
+.hero h1 a::after {
+  position: absolute;
+  right: 0.02em;
+  bottom: 0.02em;
+  left: 0.02em;
+  height: 0.045em;
+  background: currentColor;
+  content: "";
+  transform: scaleX(1);
+  transform-origin: left;
+  transition: transform 220ms ease;
+}
+
+.hero-meta {
+  display: flex;
+  margin-top: clamp(3rem, 7vw, 6.25rem);
+  color: var(--text-muted);
+  font-size: clamp(0.72rem, 1vw, 0.88rem);
+  letter-spacing: 0.04em;
+  line-height: 1.65;
+  animation: content-reveal 420ms 80ms ease-out both;
+}
+
+.hero-meta p {
+  width: 50%;
+  margin: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero h1 a:hover::after {
+    transform: scaleX(0);
+    transform-origin: right;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --page-gutter: 1.25rem;
+  }
+
+  .hero {
+    min-height: 72svh;
+    padding: 2.25rem 0 3.5rem;
+  }
+
+  .hero-kicker {
+    margin-bottom: auto;
+  }
+
+  .hero h1 {
+    max-width: 9ch;
+    font-size: clamp(3.75rem, 18vw, 6.2rem);
+  }
+
+  .hero-meta {
+    display: block;
+    margin-top: auto;
+    padding-top: 3rem;
+  }
+
+  .hero-meta p {
+    width: 100%;
+  }
+}

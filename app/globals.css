@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "./hero.css";
+@import "./directory.css";
+
+:root {
+  color-scheme: light;
+  --page-background: #fafaf8;
+  --text-primary: #111111;
+  --text-muted: rgba(17, 17, 17, 0.5);
+  --line: rgba(17, 17, 17, 0.22);
+  --page-gutter: clamp(1.5rem, 7.2vw, 8.75rem);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  background: var(--page-background);
+}
+
+body {
+  min-height: 100svh;
+  margin: 0;
+  background: var(--page-background);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus-visible {
+  border-radius: 0.12rem;
+  outline: 2px solid currentColor;
+  outline-offset: 0.24rem;
+}
+
+@keyframes content-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page-background: #111111;
+    --text-primary: #f2f2ee;
+    --text-muted: rgba(242, 242, 238, 0.52);
+    --line: rgba(242, 242, 238, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
