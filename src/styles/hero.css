@@ -63,21 +63,20 @@
     transform 220ms ease;
 }
 
+/* 时间与简介共用同一条右侧内容轴，避免两端等权分栏造成视觉割裂。 */
 .hero-details {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 32rem);
-  align-items: start;
-  gap: clamp(2rem, 6vw, 6rem);
-  margin-top: clamp(1.75rem, 3.2vw, 2.75rem);
+  width: min(36rem, 100%);
+  margin: clamp(1.75rem, 3.2vw, 2.75rem) 0 0 auto;
+  text-align: right;
 }
 
 .decimal-year {
-  margin: 0.22rem 0 0;
+  margin: 0 0 0.8rem;
   color: var(--text-muted);
-  font-size: clamp(1rem, 1.1vw, 1.0625rem);
+  font-size: clamp(0.72rem, 0.8vw, 0.8rem);
   font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  letter-spacing: 0.05em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   line-height: 1.25;
   white-space: nowrap;
   transition: color 160ms ease;
@@ -97,13 +96,12 @@
 }
 
 .hero-meta {
-  max-width: 32rem;
-  margin-left: auto;
+  max-width: 36rem;
+  margin: 0 0 0 auto;
   color: var(--text-muted);
-  font-size: clamp(1rem, 1.15vw, 1.125rem);
-  letter-spacing: 0.025em;
-  line-height: 1.65;
-  text-align: right;
+  font-size: clamp(0.95rem, 1.05vw, 1.0625rem);
+  letter-spacing: 0.018em;
+  line-height: 1.7;
   animation: content-reveal 420ms 80ms ease-out both;
 }
 
@@ -112,7 +110,7 @@
 }
 
 .hero-meta p + p {
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
 }
 
 .hero h1 a:focus-visible {
@@ -136,14 +134,6 @@
   .hero h1 a:hover::after {
     transform: scaleX(0);
     transform-origin: right;
-  }
-}
-
-/* 中等宽度改为纵向信息组，避免长数字与简介争抢同一行。 */
-@media (max-width: 900px) {
-  .hero-details {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
   }
 }
 
@@ -171,6 +161,7 @@
 
   .hero h1 {
     max-width: 9.5ch;
+    margin-left: auto;
     font-size: clamp(3rem, 13vw, 3.75rem);
   }
 
@@ -179,8 +170,7 @@
   }
 
   .decimal-year {
-    margin-top: 0;
-    font-size: 0.9375rem;
+    font-size: 0.75rem;
   }
 
   .decimal-year-prefix {

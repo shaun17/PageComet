@@ -43,8 +43,10 @@ test("builds the complete three-column homepage", async () => {
   assert.match(html, /<title>WENREN<\/title>/);
   assert.match(html, /WENRENHAO \/ Software Engineer/);
   assert.match(html, /wenren 在做/);
-  assert.match(html, /喜欢运动与健身。/);
-  assert.match(html, /也在结识更多有趣的朋友。/);
+  assert.match(
+    html,
+    /<div class="hero-meta" aria-label="个人简介"><p>软件工程师，正在成为独立开发者。写代码，做产品，也记录日常。<\/p><p>喜欢运动与健身。也在结识更多有趣的朋友。<\/p><\/div>/,
+  );
   assert.match(html, /class="decimal-year" data-decimal-year/);
   assert.match(html, /YEAR \/ /);
   assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}</);
