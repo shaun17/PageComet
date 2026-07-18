@@ -1,0 +1,60 @@
+---
+import {
+  formatDecimalYear,
+  formatYearProgressLabel,
+  FULL_DECIMAL_PLACES,
+} from "../lib/decimal-year.mjs";
+
+// 静态 HTML 先提供构建时的真实值，JavaScript 加载前也不会出现空白或从零跳变。
+const initialNow = new Date();
+const initialValue = formatDecimalYear(initialNow, FULL_DECIMAL_PLACES);
+const initialLabel = formatYearProgressLabel(initialNow);
+---
+
+<p class="decimal-year" data-decimal-year>
+  <span class="decimal-year-label" data-decimal-year-label>{initialLabel}</span>
+  <span class="decimal-year-prefix" aria-hidden="true">YEAR / </span>
+  <span class="decimal-year-value" data-decimal-year-value aria-hidden="true">{initialValue}</span>
+</p>
+
+<script>
+  import {
+    createDecimalYearTicker,
+    formatDecimalYear,
+    formatYearProgressLabel,
+  } from "../lib/decimal-year.mjs";
+
+  const counter = document.querySelector<HTMLElement>("[data-decimal-year]");
+  const value = counter?.querySelector<HTMLElement>("[data-decimal-year-value]");
+  const label = counter?.querySelector<HTMLElement>("[data-decimal-year-label]");
+
+  if (counter && value && label) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    /** 更新可见数字，并仅在百分比实际变化时同步无障碍文案。 */
+    const renderCounter = (decimalPlaces: number) => {
+      const now = new Date();
+      value.textContent = formatDecimalYear(now, decimalPlaces);
+
+      const nextLabel = formatYearProgressLabel(now);
+      if (label.textContent !== nextLabel) label.textContent = nextLabel;
+    };
+
+    // 计时器独立管理启动和停止，避免页面隐藏后仍持续刷新 DOM。
+    const ticker = createDecimalYearTicker({
+      render: renderCounter,
+      schedule: (callback, intervalMs) => window.setInterval(callback, intervalMs),
+      cancel: (timerId) => window.clearInterval(timerId as number),
+    });
+
+    /** 将浏览器当前状态同步给计时器。 */
+    const syncCounter = () => {
+      ticker.sync({ hidden: document.hidden, reducedMotion: reducedMotion.matches });
+    };
+
+    reducedMotion.addEventListener("change", syncCounter);
+    document.addEventListener("visibilitychange", syncCounter);
+    window.addEventListener("pagehide", ticker.stop, { once: true });
+    syncCounter();
+  }
+</script>
