@@ -94,6 +94,8 @@ test("builds the complete personal homepage", async () => {
   assert.ok(mailAnchor, "页面应包含 Mail 联系按钮");
   assert.match(mailAnchor, /aria-label="发送邮件至 wenrencc@gmail.com"/);
   assert.doesNotMatch(mailAnchor, /target=/);
+  assert.match(html, /<!--email_off-->\s*<a href="mailto:wenrencc@gmail.com"/);
+  assert.match(html, /Mail<\/a>\s*<!--\/email_off-->/);
   assert.doesNotMatch(html, /_next|vinext|codex-preview|react-loading-skeleton/i);
   assert.match(css, /prefers-color-scheme:dark/);
   assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);

@@ -185,10 +185,12 @@
         </section>
         </nav>
 
-        <!-- 联系方式保持为两个清晰的文字按钮，避免图标降低辨识度。 -->
+        <!-- 原生 mailto 使用 Cloudflare 官方局部关闭标记，避免被边缘脚本重写。 -->
         <nav class="contact-links" aria-label="联系方式">
           <a href="https://x.com/thisiswenren" target="_blank" rel="noopener noreferrer" aria-label="在 X 上查看 Wenren">X</a>
+          <!--email_off-->
           <a href="mailto:wenrencc@gmail.com" aria-label="发送邮件至 wenrencc@gmail.com">Mail</a>
+          <!--/email_off-->
         </nav>
       </footer>
     </main>
