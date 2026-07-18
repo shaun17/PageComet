@@ -1,0 +1,43 @@
+---
+import type { ContentEntry } from "../lib/notion";
+import { getEntryHref } from "../content/site-content";
+
+interface Props {
+  entries: ContentEntry[];
+}
+
+const { entries } = Astro.props;
+/** Notion 日期已经是 ISO 日期，直接替换分隔符可避免时区导致日期偏移。 */
+const formatDate = (value: string | null): string | null =>
+  value?.slice(0, 10).replaceAll("-", ".") ?? null;
+---
+
+<section class="content-list" aria-label="内容列表">
+  {
+    entries.length > 0 ? (
+      <ol>
+        {entries.map((entry) => {
+          const date = formatDate(entry.publishedAt);
+          return (
+            <li>
+              <a href={getEntryHref(entry)}>
+                <span class="content-list-copy">
+                  <span class="content-list-title">
+                    {entry.title}
+                    <span class="content-list-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                  {entry.summary && <span class="content-list-summary">{entry.summary}</span>}
+                </span>
+                {date && <time datetime={entry.publishedAt ?? undefined}>{date}</time>}
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    ) : (
+      <p class="content-list-empty">这里还没有已发布的内容。</p>
+    )
+  }
+</section>

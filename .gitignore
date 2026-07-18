@@ -1,7 +1,9 @@
 # 依赖与构建产物
 node_modules/
 dist/
+.astro/
 .wrangler/
+public/notion-assets/
 
 # 本地环境与系统文件
 .env

@@ -8,10 +8,10 @@
 
 .hero {
   display: flex;
-  min-height: clamp(37rem, 72svh, 52rem);
+  min-height: clamp(32rem, 64svh, 44rem);
   flex-direction: column;
   justify-content: center;
-  padding: clamp(3rem, 8vw, 8.75rem) 0 clamp(2.5rem, 6vw, 5.5rem);
+  padding: clamp(3.5rem, 7vw, 7rem) 0 clamp(3rem, 5vw, 4.5rem);
 }
 
 .hero-kicker,
@@ -20,7 +20,7 @@
 }
 
 .hero-kicker {
-  margin: 0 0 clamp(2rem, 5vw, 4.75rem);
+  margin: 0 0 clamp(1.75rem, 3.5vw, 3.25rem);
   color: var(--text-muted);
   font-size: clamp(0.67rem, 0.9vw, 0.82rem);
   font-weight: 500;
@@ -30,12 +30,13 @@
 }
 
 .hero h1 {
-  max-width: 12ch;
+  max-width: none;
   margin: 0;
   font-size: clamp(4.1rem, 8.5vw, 8.5rem);
   font-weight: 500;
   letter-spacing: -0.06em;
   line-height: 0.98;
+  text-align: right;
   animation: content-reveal 480ms ease-out both;
 }
 
@@ -43,6 +44,7 @@
   position: relative;
   display: inline-block;
   margin-left: 0.13em;
+  transition: color 180ms ease;
 }
 
 .hero h1 a::after {
@@ -55,58 +57,79 @@
   content: "";
   transform: scaleX(1);
   transform-origin: left;
-  transition: transform 220ms ease;
+  transition:
+    background-color 180ms ease,
+    transform 220ms ease;
 }
 
 .hero-meta {
-  display: flex;
-  margin-top: clamp(3rem, 7vw, 6.25rem);
+  max-width: 32rem;
+  margin-top: clamp(1.75rem, 3.2vw, 2.75rem);
+  margin-left: auto;
   color: var(--text-muted);
-  font-size: clamp(0.72rem, 1vw, 0.88rem);
-  letter-spacing: 0.04em;
-  line-height: 1.65;
+  font-size: clamp(0.76rem, 0.9vw, 0.84rem);
+  letter-spacing: 0.025em;
+  line-height: 1.7;
+  text-align: right;
   animation: content-reveal 420ms 80ms ease-out both;
 }
 
 .hero-meta p {
-  width: 50%;
   margin: 0;
 }
 
+.hero-meta p + p {
+  margin-top: 0.15rem;
+}
+
+.hero h1 a:focus-visible {
+  color: var(--text-muted);
+}
+
+.hero h1 a:focus-visible::after {
+  transform: scaleX(0);
+  transform-origin: right;
+}
+
 @media (hover: hover) and (pointer: fine) {
+  .hero h1 a:hover {
+    color: var(--text-muted);
+  }
+
   .hero h1 a:hover::after {
     transform: scaleX(0);
     transform-origin: right;
   }
 }
 
-/* 窄屏保持首屏叙事，同时让简介自然落到标题下方。 */
+/* 桌面端锁定完整句子，避免链接作为整体被浏览器推到下一行。 */
+@media (min-width: 901px) {
+  .hero h1 {
+    white-space: nowrap;
+  }
+}
+
+/* 窄屏恢复自然换行，并保持标题与简介为一个连续内容组。 */
 @media (max-width: 600px) {
   :root {
     --page-gutter: 1.25rem;
   }
 
   .hero {
-    min-height: 72svh;
-    padding: 2.25rem 0 3.5rem;
+    min-height: 0;
+    padding: 2.25rem 0 4.5rem;
   }
 
   .hero-kicker {
-    margin-bottom: auto;
+    margin-bottom: 3.25rem;
   }
 
   .hero h1 {
-    max-width: 9ch;
-    font-size: clamp(3.75rem, 18vw, 6.2rem);
+    max-width: 9.5ch;
+    font-size: clamp(3rem, 13vw, 3.75rem);
   }
 
   .hero-meta {
-    display: block;
-    margin-top: auto;
-    padding-top: 3rem;
-  }
-
-  .hero-meta p {
-    width: 100%;
+    margin-top: 2rem;
   }
 }

@@ -1,0 +1,10 @@
+---
+import CategoryPage from "../../components/CategoryPage.astro";
+import { CATEGORY_DEFINITIONS } from "../../content/categories";
+import { getCategoryEntries } from "../../content/site-content";
+
+const category = CATEGORY_DEFINITIONS.works;
+const entries = await getCategoryEntries(category.key);
+---
+
+<CategoryPage category={category} entries={entries} />

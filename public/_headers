@@ -7,5 +7,11 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
 /fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/notion-assets/*
   Cache-Control: public, max-age=31536000, immutable

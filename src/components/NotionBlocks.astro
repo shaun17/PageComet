@@ -1,0 +1,175 @@
+---
+import type { ContentBlock } from "../lib/notion";
+import { renderRichText, richTextToPlainText } from "../content/render-rich-text";
+
+interface Props {
+  blocks: ContentBlock[];
+}
+
+type BlockGroup =
+  | { kind: "bulleted" | "numbered"; blocks: ContentBlock[] }
+  | { kind: "single"; blocks: [ContentBlock] };
+
+const { blocks } = Astro.props;
+
+interface SafeBlockUrl {
+  href: string;
+  external: boolean;
+}
+
+/** 书签接受站内相对路径和 HTTP(S) 地址，并区分是否需要新窗口打开。 */
+const safeBlockUrl = (value: string | undefined): SafeBlockUrl | null => {
+  if (!value) return null;
+  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) {
+    return { href: value, external: false };
+  }
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return {
+      href: url.toString(),
+      external: url.hostname !== "wenren.cc",
+    };
+  } catch {
+    return null;
+  }
+};
+
+/** 将连续的 Notion 列表项合并为一个语义正确的 ul 或 ol。 */
+const groupBlocks = (items: ContentBlock[]): BlockGroup[] => {
+  const groups: BlockGroup[] = [];
+  for (const item of items) {
+    const kind =
+      item.type === "bulleted_list_item"
+        ? "bulleted"
+        : item.type === "numbered_list_item"
+          ? "numbered"
+          : null;
+    const previous = groups.at(-1);
+    if (kind && previous?.kind === kind) {
+      previous.blocks.push(item);
+    } else if (kind) {
+      groups.push({ kind, blocks: [item] });
+    } else {
+      groups.push({ kind: "single", blocks: [item] });
+    }
+  }
+  return groups;
+};
+
+const groups = groupBlocks(blocks);
+---
+
+{
+  groups.map((group) => {
+    if (group.kind === "bulleted" || group.kind === "numbered") {
+      const List = group.kind === "bulleted" ? "ul" : "ol";
+      return (
+        <List>
+          {group.blocks.map((item) => (
+            <li>
+              <span set:html={renderRichText(item.richText)} />
+              {item.children.length > 0 && <Astro.self blocks={item.children} />}
+            </li>
+          ))}
+        </List>
+      );
+    }
+
+    const item = group.blocks[0];
+    const bookmark = safeBlockUrl(item.url);
+    return (
+      <>
+        {item.type === "paragraph" && (
+          <p set:html={renderRichText(item.richText)} />
+        )}
+        {item.type === "heading_1" && <h2 set:html={renderRichText(item.richText)} />}
+        {item.type === "heading_2" && <h3 set:html={renderRichText(item.richText)} />}
+        {item.type === "heading_3" && <h4 set:html={renderRichText(item.richText)} />}
+        {item.type === "quote" && <blockquote set:html={renderRichText(item.richText)} />}
+        {item.type === "callout" && (
+          <aside class="notion-callout">
+            {item.icon && <span aria-hidden="true">{item.icon}</span>}
+            <div>
+              <p set:html={renderRichText(item.richText)} />
+              {item.children.length > 0 && <Astro.self blocks={item.children} />}
+            </div>
+          </aside>
+        )}
+        {item.type === "to_do" && (
+          <div class="notion-todo">
+            <input type="checkbox" checked={item.checked} disabled aria-hidden="true" />
+            <span set:html={renderRichText(item.richText)} />
+          </div>
+        )}
+        {item.type === "toggle" && (
+          <details>
+            <summary set:html={renderRichText(item.richText)} />
+            {item.children.length > 0 && <Astro.self blocks={item.children} />}
+          </details>
+        )}
+        {item.type === "code" && (
+          <figure class="notion-code">
+            <pre><code data-language={item.language}>{richTextToPlainText(item.richText)}</code></pre>
+            {item.caption && item.caption.length > 0 && (
+              <figcaption>{richTextToPlainText(item.caption)}</figcaption>
+            )}
+          </figure>
+        )}
+        {item.type === "image" && item.image && (
+          <figure class="notion-image">
+            <img src={item.image.url} alt={item.image.alt} loading="lazy" decoding="async" />
+            {item.caption && item.caption.length > 0 && (
+              <figcaption>{richTextToPlainText(item.caption)}</figcaption>
+            )}
+          </figure>
+        )}
+        {(item.type === "bookmark" || item.type === "link_preview") && bookmark && (
+          <p class="notion-bookmark">
+            <a
+              href={bookmark.href}
+              target={bookmark.external ? "_blank" : undefined}
+              rel={bookmark.external ? "noopener noreferrer" : undefined}
+            >
+              {richTextToPlainText(item.caption) || item.url}
+              <span aria-hidden="true"> {bookmark.external ? "↗" : "→"}</span>
+            </a>
+          </p>
+        )}
+        {item.type === "equation" && <p class="notion-equation">{item.expression}</p>}
+        {item.type === "divider" && <hr />}
+        {item.type === "table" && (
+          <div class="notion-table-wrap">
+            <table>
+              <tbody>
+                {item.children.map((row, rowIndex) => (
+                  <tr>
+                    {(row.cells ?? []).map((cell) =>
+                      item.table?.hasColumnHeader && rowIndex === 0 ? (
+                        <th scope="col" set:html={renderRichText(cell)} />
+                      ) : (
+                        <td set:html={renderRichText(cell)} />
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {item.type === "column_list" && (
+          <div class="notion-columns">
+            {item.children.map((column) => (
+              <section><Astro.self blocks={column.children} /></section>
+            ))}
+          </div>
+        )}
+        {(item.type === "column" || item.type === "synced_block") && (
+          <Astro.self blocks={item.children} />
+        )}
+        {["paragraph", "heading_1", "heading_2", "heading_3", "quote"].includes(item.type) &&
+          item.children.length > 0 && <Astro.self blocks={item.children} />}
+      </>
+    );
+  })
+}

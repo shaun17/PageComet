@@ -7,15 +7,29 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "clean:notion-assets": "node scripts/clean-notion-assets.mjs",
+    "predev": "npm run clean:notion-assets",
+    "dev": "astro dev",
+    "predev:fixture": "npm run clean:notion-assets",
+    "dev:fixture": "CONTENT_SOURCE=fixture astro dev",
+    "check": "astro check",
+    "prebuild": "npm run clean:notion-assets",
+    "build": "CONTENT_SOURCE=notion astro build",
+    "prebuild:fixture": "npm run clean:notion-assets",
+    "build:fixture": "CONTENT_SOURCE=fixture astro build",
+    "preview": "astro preview",
     "pages:dev": "npm run build && wrangler pages dev dist",
-    "test": "npm run build && node --test tests/site.test.mjs",
-    "deploy": "npm test && wrangler pages deploy --branch main"
+    "verify:dist": "node scripts/verify-static-output.mjs",
+    "test": "npm run check && npm run build:fixture && node --test tests/*.test.mjs && npm run verify:dist",
+    "deploy": "npm test && npm run build && npm run verify:dist && wrangler pages deploy dist --project-name wenren-home --branch main --env-file .env"
   },
   "devDependencies": {
-    "vite": "8.0.13",
+    "@astrojs/check": "^0.9.9",
+    "@types/node": "^26.1.1",
+    "typescript": "^6.0.3",
     "wrangler": "4.112.0"
+  },
+  "dependencies": {
+    "astro": "^7.1.1"
   }
 }

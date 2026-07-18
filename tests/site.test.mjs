@@ -4,10 +4,7 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 const buildRoot = new URL("../dist/", import.meta.url);
-const expectedNotionUrls = [
-  "https://wenmsg.notion.site/2c8f211130e480698093c9f3e459cf19",
-  "https://wenmsg.notion.site/3a1f211130e48082bf84ec966fa08140",
-  "https://wenmsg.notion.site/3a1f211130e480b0b3e1c8c30b902517",
+const legacyExternalUrls = [
   "https://wenmsg.notion.site/QTrade-3a1f211130e4800d8a5bc3fb3ffeaaf2?pvs=25",
   "https://wenmsg.notion.site/Kingdee-3a1f211130e480608e16f7a50c77c42b?pvs=25",
   "https://wenmsg.notion.site/CoolBox-3a1f211130e48038a132d55dbbfcc6e3?pvs=25",
@@ -15,110 +12,174 @@ const expectedNotionUrls = [
   "https://wenmsg.notion.site/Petly-Care-2c8f211130e480918bdfec198e501273?pvs=25",
   "https://wenmsg.notion.site/retimeber-1aff211130e4808d9511f5cddb8d8a30?pvs=25",
   "https://wenmsg.notion.site/IDPhotoMaker-IOS-APP-133f211130e4808d9df7ecb870a4ca84?pvs=25",
+  "https://wenmsg.notion.site/3a1f211130e480b0b3e1c8c30b902517",
+];
+const expectedInternalRoutes = [
+  "/career/qtrade/",
+  "/career/kingdee/",
+  "/career/coolbox/",
+  "/works/client-development-experiments/",
+  "/works/petly-care/",
+  "/works/retimeber/",
+  "/works/id-photo-maker/",
+  "/journal/journal/",
 ];
 
-// 读取真实构建产物，避免只验证未经处理的源码。
-async function loadBuild() {
-  const [html, headers, assetNames] = await Promise.all([
-    readFile(new URL("index.html", buildRoot), "utf8"),
-    readFile(new URL("_headers", buildRoot), "utf8"),
-    readdir(new URL("assets/", buildRoot)),
-  ]);
-  const cssName = assetNames.find((name) => name.endsWith(".css"));
-  assert.ok(cssName, "构建结果应包含 CSS 文件");
+/** 读取某个静态路由的最终 HTML，而不是只验证 Astro 源码。 */
+const readRoute = (path = "index.html") => readFile(new URL(path, buildRoot), "utf8");
 
-  return {
-    html,
-    headers,
-    css: await readFile(new URL(`assets/${cssName}`, buildRoot), "utf8"),
-  };
-}
+/** 从压缩后的页面中提取锚点，逐项验证链接安全属性。 */
+const extractAnchors = (html) => html.match(/<a\b[^>]*>/gi) ?? [];
 
-// 提取完整的 Notion 链接标签，逐项验证地址与新窗口安全属性。
-function extractNotionAnchors(html) {
-  return (html.match(/<a\b[^>]*>/gi) ?? []).filter((tag) =>
-    tag.includes("https://wenmsg.notion.site/"),
-  );
-}
+/** 按 href 精确查找构建后的链接标签。 */
+const findAnchor = (html, href) =>
+  extractAnchors(html).find((anchor) => anchor.includes(`href="${href}"`));
 
-// 按目标地址找到完整链接标签，确保联系入口不会在构建中丢失属性。
-function extractAnchorByHref(html, href) {
-  return (html.match(/<a\b[^>]*>/gi) ?? []).find((tag) =>
-    tag.includes(`href="${href}"`),
-  );
-}
-
-// 首页必须保留完整内容、三列语义以及安全的 Notion 外链。
-test("builds the complete personal homepage", async () => {
-  const { html, css } = await loadBuild();
+/** 首页保持极简三列，并且原有内容和联系入口没有丢失。 */
+test("builds the complete three-column homepage", async () => {
+  const html = await readRoute();
 
   assert.match(html, /<html lang="zh-CN">/i);
-  assert.match(html, /<title>Wenren — 软件工程师与独立开发者<\/title>/i);
-  assert.match(html, /Wenren 在做/);
-  assert.match(html, /职业经历/);
-  assert.match(html, /个人作品/);
-  assert.match(html, /流水账/);
-  assert.match(html, /QTrade/);
-  assert.match(html, /Kingdee/);
-  assert.match(html, /CoolBox/);
-  assert.match(html, /Petly Care/);
-  assert.match(html, /IDPhotoMaker/);
-  assert.match(html, /<nav class="contact-links" aria-label="联系方式">/i);
-  const contactMarkup = html.match(
-    /<nav class="contact-links"[^>]*>([\s\S]*?)<\/nav>/i,
-  )?.[1];
-  assert.ok(contactMarkup, "页面应包含完整的联系导航");
-  assert.equal((contactMarkup.match(/<a\b[^>]*>/gi) ?? []).length, 2);
-  assert.match(contactMarkup, />X<\/a>/);
-  assert.match(contactMarkup, />Mail<\/a>/);
-  const notionAnchors = extractNotionAnchors(html);
-  assert.equal(notionAnchors.length, 14);
-  for (const anchor of notionAnchors) {
-    assert.match(anchor, /target="_blank"/);
-    assert.match(anchor, /rel="noopener noreferrer"/);
+  assert.match(html, /<title>WENREN<\/title>/);
+  assert.match(html, /WENRENHAO \/ Software Engineer/);
+  assert.match(html, /wenren 在做/);
+  assert.match(html, /喜欢运动与健身。/);
+  assert.match(html, /也在结识更多有趣的朋友。/);
+  assert.equal((html.match(/class="directory-column"/g) ?? []).length, 3);
+  assert.ok(findAnchor(html, "/career/"));
+  assert.ok(findAnchor(html, "/works/"));
+  assert.ok(findAnchor(html, "/journal/"));
+
+  for (const href of expectedInternalRoutes) {
+    const anchor = findAnchor(html, href);
+    assert.ok(anchor, `首页应指向站内静态详情页：${href}`);
+    assert.doesNotMatch(anchor, /target=/);
   }
 
-  const actualUrls = [
-    ...new Set(
-      notionAnchors.map((anchor) => anchor.match(/href="([^"]+)"/)?.[1]),
-    ),
-  ].filter(Boolean);
-  assert.deepEqual(actualUrls.sort(), expectedNotionUrls.toSorted());
+  for (const href of legacyExternalUrls) {
+    assert.equal(findAnchor(html, href), undefined, `首页不应继续跳转旧 Notion 地址：${href}`);
+  }
 
-  const xAnchor = extractAnchorByHref(html, "https://x.com/thisiswenren");
-  const mailAnchor = extractAnchorByHref(html, "mailto:wenrencc@gmail.com");
-  assert.ok(xAnchor, "页面应包含 X 联系按钮");
+  const xAnchor = findAnchor(html, "https://x.com/thisiswenren");
+  const mailAnchor = findAnchor(html, "mailto:wenrencc@gmail.com");
+  assert.ok(xAnchor);
   assert.match(xAnchor, /target="_blank"/);
-  assert.match(xAnchor, /rel="noopener noreferrer"/);
-  assert.match(xAnchor, /aria-label="在 X 上查看 Wenren"/);
-  assert.ok(mailAnchor, "页面应包含 Mail 联系按钮");
-  assert.match(mailAnchor, /aria-label="发送邮件至 wenrencc@gmail.com"/);
+  assert.ok(mailAnchor);
   assert.doesNotMatch(mailAnchor, /target=/);
-  assert.match(html, /<!--email_off-->\s*<a href="mailto:wenrencc@gmail.com"/);
-  assert.match(html, /Mail<\/a>\s*<!--\/email_off-->/);
-  assert.doesNotMatch(html, /_next|vinext|codex-preview|react-loading-skeleton/i);
-  assert.match(css, /prefers-color-scheme:dark/);
-  assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(css, /font-family:Geist/);
-  assert.match(css, /\.contact-links a\{/);
-  assert.match(css, /min-height:2\.75rem/);
+  assert.match(html, /<!--email_off--><a href="mailto:wenrencc@gmail.com"/);
+  assert.match(html, /Mail<\/a><!--\/email_off-->/);
 });
 
-// Pages 配置和响应头必须随构建结果一起交付。
+/** 三个分类页统一由内容数据生成，全部条目都具有站内静态详情页。 */
+test("builds category indexes and an internal article", async () => {
+  await Promise.all(
+    expectedInternalRoutes.map((route) =>
+      access(new URL(`${route.slice(1)}index.html`, buildRoot)),
+    ),
+  );
+
+  const [career, works, journal, article, migratedCareer, migratedWork, migratedJournal] =
+    await Promise.all([
+      readRoute("career/index.html"),
+      readRoute("works/index.html"),
+      readRoute("journal/index.html"),
+      readRoute("journal/writing-with-notion/index.html"),
+      readRoute("career/qtrade/index.html"),
+      readRoute("works/petly-care/index.html"),
+      readRoute("journal/journal/index.html"),
+    ]);
+
+  for (const html of [career, works, journal, article, migratedCareer, migratedWork, migratedJournal]) {
+    assert.match(html, /<title>WENREN<\/title>/);
+  }
+
+  assert.match(career, /01 \/ CAREER/);
+  assert.match(career, /QTrade/);
+  assert.match(career, /Kingdee/);
+  assert.match(career, /CoolBox/);
+  assert.match(works, /02 \/ WORKS/);
+  assert.match(works, /Petly Care/);
+  assert.match(works, /IDPhotoMaker/);
+  assert.match(journal, /03 \/ JOURNAL/);
+  assert.ok(findAnchor(journal, "/journal/writing-with-notion/"));
+  assert.ok(findAnchor(career, "/career/qtrade/"));
+  assert.ok(findAnchor(works, "/works/petly-care/"));
+  assert.ok(findAnchor(journal, "/journal/journal/"));
+
+  assert.match(migratedCareer, /<h1>QTrade<\/h1>/);
+  assert.match(migratedCareer, /软件工程与交易系统相关的职业经历。/);
+  assert.match(migratedWork, /<h1>Petly Care<\/h1>/);
+  assert.match(migratedJournal, /<h1>流水账<\/h1>/);
+
+  assert.match(article, /<h1>用 Notion 写一篇文章<\/h1>/);
+  assert.match(article, /class="notion-content"/);
+  assert.match(article, /<ul><li>/);
+  assert.match(article, /<blockquote>/);
+  const bookmarkAnchor = findAnchor(article, "https://example.com/reference");
+  assert.ok(bookmarkAnchor);
+  assert.match(bookmarkAnchor, /target="_blank"/);
+  assert.match(article, /<pre><code data-language="shell">/);
+  assert.match(article, /<details><summary>/);
+  assert.match(article, /href="https:\/\/wenren\.cc\/journal\/writing-with-notion\/"/);
+  const internalArticleAnchor = findAnchor(article, "/journal/writing-with-notion/");
+  assert.ok(internalArticleAnchor);
+  assert.doesNotMatch(internalArticleAnchor, /target=/);
+  assert.doesNotMatch(article, /www\.notion\.so\/11111111222233334444555555555555/);
+  const migratedEntryAnchor = findAnchor(article, "/career/qtrade/");
+  assert.ok(migratedEntryAnchor);
+  assert.doesNotMatch(migratedEntryAnchor, /target=/);
+  assert.equal(
+    extractAnchors(article).filter((anchor) => anchor.includes('href="/career/qtrade/"')).length,
+    3,
+  );
+  assert.doesNotMatch(article, /wenmsg\.notion\.site/);
+  assert.doesNotMatch(article, /<script>alert\("xss"\)<\/script>/);
+  assert.match(article, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
+  assert.doesNotMatch(article, /javascript:alert/);
+  await assert.rejects(access(new URL("journal/start-here/index.html", buildRoot)));
+});
+
+/** 正式产物不能泄漏 Notion 凭据或一小时后失效的临时资源地址。 */
+test("keeps generated files static and credential-free", async () => {
+  const names = await readdir(buildRoot, { recursive: true });
+  const readableNames = names.filter((name) => /\.(?:html|css|js)$/i.test(name));
+  const contents = await Promise.all(
+    readableNames.map((name) => readFile(new URL(name, buildRoot), "utf8")),
+  );
+  const output = contents.join("\n");
+
+  assert.doesNotMatch(output, /NOTION_TOKEN|Bearer\s+secret_/i);
+  assert.doesNotMatch(output, /X-Amz-(?:Algorithm|Credential|Signature)/i);
+  assert.doesNotMatch(output, /secure\.notion-static\.com|notionusercontent\.com/i);
+  assert.doesNotMatch(output, /https:\/\/[^/"']+\.notion\.site\//i);
+  assert.doesNotMatch(output, /_next|codex-preview|react-loading-skeleton/i);
+});
+
+/** Cloudflare Pages 配置、缓存响应头和本地字体随构建一起交付。 */
 test("keeps Cloudflare Pages configuration deployable", async () => {
-  const [{ headers }, wrangler] = await Promise.all([
-    loadBuild(),
+  const [headers, wrangler, packageJson, cssNames] = await Promise.all([
+    readRoute("_headers"),
     readFile(new URL("wrangler.jsonc", projectRoot), "utf8"),
+    readFile(new URL("package.json", projectRoot), "utf8"),
+    readdir(new URL("_astro/", buildRoot)),
     access(new URL("favicon.svg", buildRoot)),
     access(new URL("fonts/geist-98bbbccb.woff2", buildRoot)),
     access(new URL("fonts/geist-mono-013b2f2f.woff2", buildRoot)),
   ]);
+  const cssFile = cssNames.find((name) => name.endsWith(".css"));
+  assert.ok(cssFile);
+  const css = await readFile(new URL(`_astro/${cssFile}`, buildRoot), "utf8");
 
   assert.match(wrangler, /"name": "wenren-home"/);
   assert.match(wrangler, /"pages_build_output_dir": "\.\/dist"/);
-  assert.match(wrangler, /"compatibility_date": "2026-07-18"/);
+  assert.match(packageJson, /"build": "CONTENT_SOURCE=notion astro build"/);
+  assert.match(packageJson, /wrangler pages deploy dist/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /Cache-Control: public, max-age=31536000, immutable/);
-  assert.match(headers, /\/fonts\/\*/);
+  assert.match(headers, /\/_astro\/\*/);
+  assert.match(headers, /\/notion-assets\/\*/);
+  assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /--surface-subtle:/);
+  assert.match(css, /prefers-color-scheme:dark/);
 });

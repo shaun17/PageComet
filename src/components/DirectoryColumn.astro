@@ -1,0 +1,36 @@
+---
+import type { ContentEntry } from "../lib/notion";
+import type { CategoryDefinition } from "../content/categories";
+import { getEntryHref } from "../content/site-content";
+
+interface Props {
+  category: CategoryDefinition;
+  entries: ContentEntry[];
+}
+
+const { category, entries } = Astro.props;
+const headingId = `directory-${category.key}`;
+// 首页保持紧凑，只展示每个分类最靠前的四项，其余内容进入分类页。
+const visibleEntries = entries.slice(0, 4);
+---
+
+<section class="directory-column" aria-labelledby={headingId}>
+  <div class="column-heading">
+    <span class="column-index" aria-hidden="true">{category.index}</span>
+    <h2 id={headingId}><a href={category.path}>{category.label}</a></h2>
+  </div>
+
+  {category.key === "journal" && <p class="column-note">{category.description}</p>}
+  <ul class="directory-links">
+    {
+      visibleEntries.map((entry) => {
+        return (
+          <li>
+            <a href={getEntryHref(entry)}>{entry.title}</a>
+          </li>
+        );
+      })
+    }
+    <li><a class="more-link" href={category.path}>更多</a></li>
+  </ul>
+</section>

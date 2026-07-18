@@ -1,0 +1,13 @@
+---
+import PageFooter from "../components/PageFooter.astro";
+import SiteLayout from "../layouts/SiteLayout.astro";
+---
+
+<SiteLayout title="页面不存在" description="这个页面不存在，或内容尚未发布。">
+  <main class="content-shell not-found">
+    <p class="category-kicker">404 / NOT FOUND</p>
+    <h1>这里没有内容。</h1>
+    <a class="not-found-return" href="/">← 返回首页</a>
+    <PageFooter />
+  </main>
+</SiteLayout>

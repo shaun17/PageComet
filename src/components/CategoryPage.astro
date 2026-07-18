@@ -1,0 +1,29 @@
+---
+import type { ContentEntry } from "../lib/notion";
+import type { CategoryDefinition } from "../content/categories";
+import SiteLayout from "../layouts/SiteLayout.astro";
+import ContentList from "./ContentList.astro";
+import PageFooter from "./PageFooter.astro";
+
+interface Props {
+  category: CategoryDefinition;
+  entries: ContentEntry[];
+}
+
+const { category, entries } = Astro.props;
+---
+
+<SiteLayout title={category.label} description={category.description}>
+  <main class="content-shell">
+    <nav class="page-navigation" aria-label="页面导航"><a href="/">← 首页</a></nav>
+
+    <header class="category-header">
+      <p class="category-kicker">{category.index} / {category.englishLabel}</p>
+      <h1>{category.label}</h1>
+      <p class="category-description">{category.description}</p>
+    </header>
+
+    <ContentList entries={entries} />
+    <PageFooter />
+  </main>
+</SiteLayout>

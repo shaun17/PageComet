@@ -6,8 +6,8 @@
 }
 
 .directory-column {
-  min-height: 21rem;
-  padding: 1.25rem clamp(1.25rem, 2.6vw, 2.75rem) 1rem 0;
+  min-height: 0;
+  padding: 1.25rem clamp(1.25rem, 2.6vw, 2.75rem) 0.75rem 0;
 }
 
 .directory-column + .directory-column {
@@ -25,7 +25,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 3.4rem;
+  margin-bottom: 2.25rem;
 }
 
 .column-heading h2 {
@@ -38,7 +38,7 @@
 .column-heading h2 a::after {
   display: inline-block;
   margin-left: 0.35em;
-  content: "↗";
+  content: "→";
   font-family: var(--font-mono);
   font-size: 0.75em;
   font-weight: 400;
@@ -59,7 +59,7 @@
 
 .column-note {
   max-width: 27ch;
-  margin: 0 0 2rem;
+  margin: 0 0 1.5rem;
   color: var(--text-muted);
   font-size: 0.76rem;
   letter-spacing: 0.02em;
@@ -88,12 +88,16 @@
 .directory-links a::after {
   display: inline-block;
   margin-left: 0.45em;
-  content: "↗";
+  content: "→";
   opacity: 0;
   transform: translate(-0.12rem, 0.12rem);
   transition:
     opacity 160ms ease,
     transform 160ms ease;
+}
+
+.directory-links a[target="_blank"]::after {
+  content: "↗";
 }
 
 .directory-links .more-link {
@@ -137,7 +141,7 @@
   .directory-column + .directory-column,
   .directory-column:last-child {
     min-height: 0;
-    padding: 1.15rem 0 3.75rem;
+    padding: 1.15rem 0 3rem;
     border-left: 0;
   }
 
@@ -146,6 +150,6 @@
   }
 
   .column-heading {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
   }
 }

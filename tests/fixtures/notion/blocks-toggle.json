@@ -1,0 +1,19 @@
+{
+  "object": "list",
+  "results": [
+    {
+      "object": "block",
+      "id": "nested-list-item",
+      "type": "bulleted_list_item",
+      "has_children": false,
+      "bulleted_list_item": {
+        "rich_text": [{ "type": "text", "plain_text": "嵌套内容", "href": null, "annotations": {} }],
+        "color": "default"
+      }
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null,
+  "type": "block",
+  "block": {}
+}

@@ -1,0 +1,57 @@
+---
+import type { ContentEntry } from "../lib/notion";
+import { CATEGORY_DEFINITIONS } from "../content/categories";
+import SiteLayout from "../layouts/SiteLayout.astro";
+import NotionBlocks from "./NotionBlocks.astro";
+import PageFooter from "./PageFooter.astro";
+
+interface Props {
+  entry: ContentEntry;
+}
+
+const { entry } = Astro.props;
+const category = CATEGORY_DEFINITIONS[entry.category];
+/** ISO 日期直接转为稳定的点分格式，不让部署机器时区改变展示结果。 */
+const formatDate = (value: string | null): string | null =>
+  value?.slice(0, 10).replaceAll("-", ".") ?? null;
+const publishedDate = formatDate(entry.publishedAt);
+const updatedDate = entry.updatedAt.slice(0, 10).replaceAll("-", ".");
+const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDate);
+---
+
+<SiteLayout title={entry.title} description={entry.summary} type="article">
+  <main class="content-shell article-shell">
+    <nav class="page-navigation" aria-label="页面导航">
+      <a href={category.path}>← 返回{category.label}</a>
+    </nav>
+
+    <article>
+      <header class="article-header">
+        <p class="article-meta">
+          <span>{category.label}</span>
+          {publishedDate && <span aria-hidden="true"> / </span>}
+          {publishedDate && <time datetime={entry.publishedAt ?? undefined}>{publishedDate}</time>}
+          {showUpdatedDate && <span>更新于 {updatedDate}</span>}
+        </p>
+        <h1>{entry.title}</h1>
+        {entry.summary && <p class="article-summary">{entry.summary}</p>}
+      </header>
+
+      {entry.cover && (
+        <figure class="article-cover">
+          <img src={entry.cover.url} alt={entry.cover.alt || entry.title} />
+        </figure>
+      )}
+
+      <div class="notion-content">
+        <NotionBlocks blocks={entry.blocks} />
+      </div>
+
+      <nav class="article-return" aria-label="返回分类">
+        <a href={category.path}>← 返回{category.label}</a>
+      </nav>
+    </article>
+
+    <PageFooter />
+  </main>
+</SiteLayout>

@@ -1,0 +1,40 @@
+---
+import ContactLinks from "../components/ContactLinks.astro";
+import DirectoryColumn from "../components/DirectoryColumn.astro";
+import { ORDERED_CATEGORIES } from "../content/categories";
+import { getSiteContent } from "../content/site-content";
+import SiteLayout from "../layouts/SiteLayout.astro";
+
+const entries = await getSiteContent();
+---
+
+<SiteLayout>
+  <main class="site-shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="hero-kicker">WENRENHAO / Software Engineer</p>
+
+      <h1 id="hero-title">wenren 在做<a href="/works/">独立产品</a>。</h1>
+
+      <div class="hero-meta" aria-label="个人简介">
+        <p>软件工程师，正在成为独立开发者。</p>
+        <p>写代码，做产品，也记录日常。</p>
+        <p>喜欢运动与健身。</p>
+        <p>也在结识更多有趣的朋友。</p>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <nav class="directory" aria-label="内容目录">
+        {
+          ORDERED_CATEGORIES.map((category) => (
+            <DirectoryColumn
+              category={category}
+              entries={entries.filter((entry) => entry.category === category.key)}
+            />
+          ))
+        }
+      </nav>
+      <ContactLinks />
+    </footer>
+  </main>
+</SiteLayout>

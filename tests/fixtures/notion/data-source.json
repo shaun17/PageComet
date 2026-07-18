@@ -1,0 +1,17 @@
+{
+  "object": "data_source",
+  "id": "edd7fd6c-d863-4b1a-96c2-8ae3804d5433",
+  "properties": {
+    "标题": { "id": "title", "name": "标题", "type": "title", "title": {} },
+    "Slug": { "id": "slug", "name": "Slug", "type": "rich_text", "rich_text": {} },
+    "分类": { "id": "category", "name": "分类", "type": "select", "select": {} },
+    "状态": { "id": "status", "name": "状态", "type": "select", "select": {} },
+    "摘要": { "id": "summary", "name": "摘要", "type": "rich_text", "rich_text": {} },
+    "发布日期": { "id": "published", "name": "发布日期", "type": "date", "date": {} },
+    "排序": { "id": "order", "name": "排序", "type": "number", "number": {} },
+    "置顶": { "id": "featured", "name": "置顶", "type": "checkbox", "checkbox": {} },
+    "外部链接": { "id": "external", "name": "外部链接", "type": "url", "url": {} },
+    "标签": { "id": "tags", "name": "标签", "type": "multi_select", "multi_select": {} },
+    "封面": { "id": "cover", "name": "封面", "type": "files", "files": {} }
+  }
+}

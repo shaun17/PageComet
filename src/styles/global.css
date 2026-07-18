@@ -1,6 +1,10 @@
 @import "./hero.css";
 @import "./directory.css";
 @import "./contact.css";
+@import "./page.css";
+@import "./content-list.css";
+@import "./article.css";
+@import "./notion-content.css";
 
 @font-face {
   font-family: "Geist";
@@ -30,6 +34,7 @@
   --text-primary: #111111;
   --text-muted: rgba(17, 17, 17, 0.62);
   --line: rgba(17, 17, 17, 0.22);
+  --surface-subtle: rgba(17, 17, 17, 0.055);
   --page-gutter: clamp(1.5rem, 7.2vw, 8.75rem);
   --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -86,6 +91,7 @@ a:focus-visible {
     --text-primary: #f2f2ee;
     --text-muted: rgba(242, 242, 238, 0.52);
     --line: rgba(242, 242, 238, 0.22);
+    --surface-subtle: rgba(242, 242, 238, 0.075);
   }
 }
 
