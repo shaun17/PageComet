@@ -28,7 +28,7 @@
   color-scheme: light;
   --page-background: #fafaf8;
   --text-primary: #111111;
-  --text-muted: rgba(17, 17, 17, 0.5);
+  --text-muted: rgba(17, 17, 17, 0.62);
   --line: rgba(17, 17, 17, 0.22);
   --page-gutter: clamp(1.5rem, 7.2vw, 8.75rem);
   --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI",
