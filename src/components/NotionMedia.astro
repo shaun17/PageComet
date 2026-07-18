@@ -1,0 +1,101 @@
+---
+import type { ContentBlock } from "../lib/notion";
+import { richTextToPlainText } from "../content/render-rich-text";
+import { resolveVideoPresentation } from "../content/video-presentation";
+
+interface Props {
+  item: ContentBlock;
+}
+
+const { item } = Astro.props;
+const mediaCaption = richTextToPlainText(item.caption ?? []);
+const mediaTitle = mediaCaption || "文章视频";
+const isAnimatedGif = item.image?.url.toLowerCase().split(/[?#]/, 1)[0]?.endsWith(".gif");
+const videoPresentation =
+  item.type === "video" && item.video
+    ? resolveVideoPresentation(item.video.url, "video")
+    : item.type === "embed" && item.url
+      ? resolveVideoPresentation(item.url, "embed")
+      : null;
+---
+
+{item.type === "image" && item.image && (
+  <figure class:list={["notion-image", { "notion-image-gif": isAnimatedGif }]}>
+    <img src={item.image.url} alt={item.image.alt} loading="lazy" decoding="async" />
+    {mediaCaption && <figcaption>{mediaCaption}</figcaption>}
+  </figure>
+)}
+
+{(item.type === "video" || item.type === "embed") && videoPresentation && (
+  <figure class={`notion-media notion-media-${videoPresentation.kind}`}>
+    {videoPresentation.kind === "native" && (
+      <video
+        src={videoPresentation.url}
+        controls
+        playsinline
+        preload="none"
+        aria-label={mediaTitle}
+        data-notion-video
+      >
+        <a
+          href={videoPresentation.url}
+          target={videoPresentation.external ? "_blank" : undefined}
+          rel={videoPresentation.external ? "noopener noreferrer" : undefined}
+        >
+          打开视频
+        </a>
+      </video>
+      <p class="notion-video-fallback" data-notion-video-fallback hidden>
+        <a
+          href={videoPresentation.url}
+          target={videoPresentation.external ? "_blank" : undefined}
+          rel={videoPresentation.external ? "noopener noreferrer" : undefined}
+        >
+          浏览器无法播放，打开原视频<span aria-hidden="true"> ↗</span>
+        </a>
+      </p>
+    )}
+    {videoPresentation.kind === "embed" && (
+      <div class="notion-video-frame">
+        <iframe
+          src={videoPresentation.url}
+          title={`${videoPresentation.provider}：${mediaTitle}`}
+          loading="lazy"
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+    )}
+    {videoPresentation.kind === "link" && (
+      <p class="notion-embed-link">
+        <a
+          href={videoPresentation.url}
+          target={videoPresentation.external ? "_blank" : undefined}
+          rel={videoPresentation.external ? "noopener noreferrer" : undefined}
+        >
+          {item.type === "video" ? "打开视频" : "打开嵌入内容"}<span aria-hidden="true"> ↗</span>
+        </a>
+      </p>
+    )}
+    {mediaCaption && <figcaption>{mediaCaption}</figcaption>}
+  </figure>
+)}
+
+<script>
+  const videoPlayers = document.querySelectorAll<HTMLVideoElement>("[data-notion-video]");
+
+  for (const player of videoPlayers) {
+    const fallback = player.parentElement?.querySelector<HTMLElement>(
+      "[data-notion-video-fallback]",
+    );
+    /** 播放失败时用备用链接替换黑屏，正常播放时保持页面干净。 */
+    const replaceFailedPlayer = () => {
+      player.setAttribute("hidden", "");
+      fallback?.removeAttribute("hidden");
+    };
+
+    player.addEventListener("error", replaceFailedPlayer, { once: true });
+    if (player.error) replaceFailedPlayer();
+  }
+</script>

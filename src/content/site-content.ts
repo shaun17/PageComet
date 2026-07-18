@@ -26,6 +26,8 @@ const RENDERABLE_BLOCKS = new Set<ContentBlock["type"]>([
   "callout",
   "code",
   "image",
+  "video",
+  "embed",
   "bookmark",
   "link_preview",
   "equation",
@@ -43,6 +45,17 @@ const isSafeBookmarkUrl = (value: string | undefined): boolean => {
   if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) return true;
   try {
     return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+};
+
+/** 媒体只允许站内绝对路径或 HTTPS，避免混合内容和未知协议进入播放器。 */
+const isSafeMediaUrl = (value: string | undefined): boolean => {
+  if (!value) return false;
+  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) return true;
+  try {
+    return new URL(value).protocol === "https:";
   } catch {
     return false;
   }
@@ -113,6 +126,12 @@ const assertRenderableBlocks = (blocks: ContentBlock[], articleTitle: string): v
     if (["bookmark", "link_preview"].includes(item.type) && !isSafeBookmarkUrl(item.url)) {
       throw new Error(`文章「${articleTitle}」包含无效的 Notion 书签地址`);
     }
+    if (item.type === "video" && !isSafeMediaUrl(item.video?.url)) {
+      throw new Error(`文章「${articleTitle}」包含无效的 Notion 视频地址`);
+    }
+    if (item.type === "embed" && !isSafeMediaUrl(item.url)) {
+      throw new Error(`文章「${articleTitle}」包含无效的 Notion 嵌入地址`);
+    }
     assertRenderableBlocks(item.children, articleTitle);
   }
 };
@@ -142,7 +161,7 @@ const loadSiteContent = async (): Promise<ContentEntry[]> => {
     rewriteInternalLinks(await loadPublishedContent({
       token,
       dataSourceId,
-      images: { localizeExternal: true },
+      media: { localizeExternalImages: true },
     })),
   );
 };

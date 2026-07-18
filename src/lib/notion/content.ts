@@ -1,4 +1,4 @@
-import { localizeContentEntryImages } from "./assets";
+import { localizeContentEntryMedia } from "./assets";
 import { readNotionBlockTree } from "./blocks";
 import { NotionClient } from "./client";
 import {
@@ -11,7 +11,7 @@ import type {
   ContentBlock,
   ContentEntry,
   ContentPropertyNames,
-  ImageLocalizationOptions,
+  MediaLocalizationOptions,
 } from "./types";
 
 export interface LoadPublishedContentOptions {
@@ -19,7 +19,7 @@ export interface LoadPublishedContentOptions {
   dataSourceId?: string;
   client?: NotionClient;
   properties?: Partial<ContentPropertyNames>;
-  images?: false | ImageLocalizationOptions;
+  media?: false | MediaLocalizationOptions;
   maxBlockDepth?: number;
 }
 
@@ -43,6 +43,7 @@ const hasMeaningfulContent = (blocks: ContentBlock[]): boolean =>
       hasText ||
         hasCells ||
         block.image ||
+        block.video ||
         block.url ||
         block.expression ||
         block.title ||
@@ -77,7 +78,7 @@ const sortContentEntries = (entries: ContentEntry[]): ContentEntry[] =>
   });
 
 /**
- * 构建时读取全部已发布内容、递归展开正文，并将 Notion 临时图片本地化。
+ * 构建时读取全部已发布内容、递归展开正文，并将 Notion 临时媒体本地化。
  * 该函数不会在浏览器运行，调用方应仅在 Astro 构建阶段使用。
  */
 export const loadPublishedContent = async (
@@ -97,9 +98,9 @@ export const loadPublishedContent = async (
     const entry = normalizeContentPage(page, blocks, names);
     validateEntryBody(entry);
     entries.push(
-      options.images === false
+      options.media === false
         ? entry
-        : await localizeContentEntryImages(entry, options.images),
+        : await localizeContentEntryMedia(entry, options.media),
     );
   }
 

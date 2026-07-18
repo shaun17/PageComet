@@ -1,5 +1,5 @@
 import type { NotionPageResponse, NotionPropertyValue } from "./api-types";
-import type { ContentImage, ContentRichText } from "./types";
+import type { ContentImage, ContentMedia, ContentRichText } from "./types";
 
 /** 将未知 JSON 值安全收窄为普通对象。 */
 export const asRecord = (value: unknown): Record<string, unknown> | null => {
@@ -115,8 +115,8 @@ export const readMultiSelectProperty = (property: NotionPropertyValue): string[]
   });
 };
 
-/** 从 Notion 文件对象解析可访问 URL；file_upload 没有 URL 时安全忽略。 */
-export const readFileImage = (value: unknown, alt: string): ContentImage | null => {
+/** 从 Notion 文件对象解析可访问 URL；已挂载的 file_upload 会由 API 作为 file 返回。 */
+export const readFileMedia = (value: unknown): ContentMedia | null => {
   const file = asRecord(value);
   if (!file || typeof file.type !== "string") return null;
 
@@ -125,7 +125,6 @@ export const readFileImage = (value: unknown, alt: string): ContentImage | null 
     if (typeof source?.url !== "string") return null;
     return {
       url: source.url,
-      alt,
       source: "notion",
       expiryTime: typeof source.expiry_time === "string" ? source.expiry_time : null,
       localized: false,
@@ -137,7 +136,6 @@ export const readFileImage = (value: unknown, alt: string): ContentImage | null 
     if (typeof source?.url !== "string") return null;
     return {
       url: source.url,
-      alt,
       source: "external",
       expiryTime: null,
       localized: false,
@@ -145,6 +143,12 @@ export const readFileImage = (value: unknown, alt: string): ContentImage | null 
   }
 
   return null;
+};
+
+/** 图片复用通用媒体解析，并补充页面渲染所需的替代文本。 */
+export const readFileImage = (value: unknown, alt: string): ContentImage | null => {
+  const media = readFileMedia(value);
+  return media ? { ...media, alt } : null;
 };
 
 /** 读取 FILES 属性中的第一张封面图。 */

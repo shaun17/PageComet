@@ -124,6 +124,17 @@ test("builds category indexes and an internal article", async () => {
   assert.match(bookmarkAnchor, /target="_blank"/);
   assert.match(article, /<pre><code data-language="shell">/);
   assert.match(article, /<details><summary>/);
+  assert.match(
+    article,
+    /<img src="\/notion-assets\/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6\.gif" alt="动态操作演示" loading="lazy" decoding="async">/,
+  );
+  assert.match(
+    article,
+    /<video src="\/notion-assets\/7e2817c0d96668fedb7bafd028b897d8ab82d81a433250f25452a4c818796f70\.mp4" controls playsinline preload="none" aria-label="Notion 上传视频"[^>]*>/,
+  );
+  assert.match(article, /src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/);
+  assert.match(article, /src="https:\/\/player\.vimeo\.com\/video\/226053498\?h=a1599a8ee9"/);
+  assert.equal((article.match(/allowfullscreen/g) ?? []).length, 2);
   assert.match(article, /href="https:\/\/wenren\.cc\/journal\/writing-with-notion\/"/);
   const internalArticleAnchor = findAnchor(article, "/journal/writing-with-notion/");
   assert.ok(internalArticleAnchor);

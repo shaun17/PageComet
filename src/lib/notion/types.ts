@@ -16,13 +16,17 @@ export interface ContentRichText {
   };
 }
 
-/** 图片来源信息；Notion 托管链接在构建阶段会被改写为本地地址。 */
-export interface ContentImage {
+/** 媒体来源信息；Notion 托管链接在构建阶段会被改写为本地地址。 */
+export interface ContentMedia {
   url: string;
-  alt: string;
   source: "notion" | "external";
   expiryTime: string | null;
   localized: boolean;
+}
+
+/** 图片额外保留替代文本，GIF 会和其他图片一样按原始字节静态化。 */
+export interface ContentImage extends ContentMedia {
+  alt: string;
 }
 
 /** 页面正文支持的块类型，未知类型会保留为 unsupported，避免构建直接丢失结构。 */
@@ -72,6 +76,7 @@ export interface ContentBlock {
   expression?: string;
   icon?: string;
   image?: ContentImage;
+  video?: ContentMedia;
   url?: string;
   title?: string;
   cells?: ContentRichText[][];
@@ -118,11 +123,13 @@ export interface ContentPropertyNames {
   cover: string;
 }
 
-/** 图片本地化参数；生产构建写入 dist，开发模式写入 public。 */
-export interface ImageLocalizationOptions {
+/** 媒体本地化参数；生产构建写入 dist，开发模式写入 public。 */
+export interface MediaLocalizationOptions {
   outputDirectory?: string;
   publicPath?: string;
-  maxBytes?: number;
-  localizeExternal?: boolean;
+  maxImageBytes?: number;
+  maxVideoBytes?: number;
+  localizeExternalImages?: boolean;
+  localizeExternalVideos?: boolean;
   fetchImpl?: typeof fetch;
 }

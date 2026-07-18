@@ -1,7 +1,13 @@
 import type { NotionBlockResponse } from "./api-types";
 import type { NotionClient } from "./client";
 import type { ContentBlock, ContentBlockType, ContentRichText } from "./types";
-import { asRecord, readFileImage, readRichText, richTextToPlainText } from "./values";
+import {
+  asRecord,
+  readFileImage,
+  readFileMedia,
+  readRichText,
+  richTextToPlainText,
+} from "./values";
 
 const SUPPORTED_TYPES = new Set<ContentBlockType>([
   "paragraph",
@@ -47,7 +53,7 @@ const readCaption = (payload: Record<string, unknown>): ContentRichText[] =>
 /** 从块负载中读取 URL，兼容直接链接和 Notion 文件对象。 */
 const readBlockUrl = (payload: Record<string, unknown>): string | undefined => {
   if (typeof payload.url === "string") return payload.url;
-  return readFileImage(payload, "")?.url;
+  return readFileMedia(payload)?.url;
 };
 
 /** 读取 callout 图标，当前仅渲染语义稳定的 emoji。 */
@@ -85,7 +91,12 @@ export const normalizeNotionBlock = (
     const image = readFileImage(payload, richTextToPlainText(caption));
     if (image) block.image = image;
   }
-  if (["bookmark", "link_preview", "embed", "video", "audio", "file", "pdf"].includes(type)) {
+  if (type === "video") {
+    block.caption = readCaption(payload);
+    const video = readFileMedia(payload);
+    if (video) block.video = video;
+  }
+  if (["bookmark", "link_preview", "embed", "audio", "file", "pdf"].includes(type)) {
     block.url = readBlockUrl(payload);
     block.caption = readCaption(payload);
   }

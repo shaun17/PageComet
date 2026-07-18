@@ -78,6 +78,42 @@ const INTERNAL_ARTICLE: ContentEntry = {
     block("list-two", "bulleted_list_item", [text("草稿不会进入网站，也不会生成公开地址。")]),
     block("quote", "quote", [text("Notion 负责写作，wenren.cc 负责最终呈现。")]),
     {
+      ...block("animated-gif", "image"),
+      image: {
+        url: "/notion-assets/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6.gif",
+        alt: "动态操作演示",
+        source: "notion",
+        expiryTime: null,
+        localized: true,
+      },
+      caption: [text("GIF 动画演示")],
+    },
+    {
+      ...block("uploaded-video", "video"),
+      video: {
+        url: "/notion-assets/7e2817c0d96668fedb7bafd028b897d8ab82d81a433250f25452a4c818796f70.mp4",
+        source: "notion",
+        expiryTime: null,
+        localized: true,
+      },
+      caption: [text("Notion 上传视频")],
+    },
+    {
+      ...block("youtube-video", "video"),
+      video: {
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        source: "external",
+        expiryTime: null,
+        localized: false,
+      },
+      caption: [text("YouTube 视频")],
+    },
+    {
+      ...block("vimeo-embed", "embed"),
+      url: "https://player.vimeo.com/video/226053498?h=a1599a8ee9",
+      caption: [text("Vimeo 视频")],
+    },
+    {
       ...block("bookmark", "bookmark"),
       url: "https://example.com/reference",
       caption: [text("一个普通网页书签")],

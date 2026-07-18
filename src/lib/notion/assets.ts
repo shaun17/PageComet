@@ -1,38 +1,40 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ContentBlock, ContentEntry, ContentImage, ImageLocalizationOptions } from "./types";
+import {
+  resolveMediaExtension,
+  validateMediaSignature,
+  type MediaKind,
+} from "./media-formats";
+import type {
+  ContentBlock,
+  ContentEntry,
+  ContentMedia,
+  MediaLocalizationOptions,
+} from "./types";
 
 const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// Cloudflare Pages 单个静态文件上限为 25 MiB，构建阶段提前给出明确错误。
+const DEFAULT_MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 
-const CONTENT_TYPE_EXTENSIONS: Readonly<Record<string, string>> = {
-  "image/avif": ".avif",
-  "image/gif": ".gif",
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-};
-
-/** 从响应类型或 URL 推断受支持的位图后缀，拒绝 SVG 和未知格式。 */
-const resolveImageExtension = (contentType: string, sourceUrl: URL): string => {
-  const mediaType = contentType.split(";", 1)[0]?.trim().toLowerCase();
-  if (mediaType) {
-    const extension = CONTENT_TYPE_EXTENSIONS[mediaType];
-    if (!extension) throw new Error(`Notion 图片格式不受支持：${mediaType}`);
-    return extension;
-  }
-
-  const extension = path.extname(sourceUrl.pathname).toLowerCase();
-  if ([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"].includes(extension)) {
-    return extension;
-  }
-  throw new Error("Notion 图片缺少可识别的安全格式");
-};
+interface ResolvedMediaLocalizationOptions {
+  outputDirectory: string;
+  publicPath: string;
+  maxImageBytes: number;
+  maxVideoBytes: number;
+  fetchImpl: typeof fetch;
+  localizeExternalImages: boolean;
+  localizeExternalVideos: boolean;
+}
 
 /** 在读取响应流时执行硬性大小限制，避免异常资源耗尽构建内存。 */
-const readLimitedBody = async (response: Response, maxBytes: number): Promise<Uint8Array> => {
+const readLimitedBody = async (
+  response: Response,
+  maxBytes: number,
+  label: string,
+): Promise<Uint8Array> => {
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("图片响应缺少可读内容");
+  if (!reader) throw new Error(`${label}响应缺少可读内容`);
 
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
@@ -42,7 +44,7 @@ const readLimitedBody = async (response: Response, maxBytes: number): Promise<Ui
     totalBytes += value.byteLength;
     if (totalBytes > maxBytes) {
       await reader.cancel();
-      throw new Error(`Notion 图片超过 ${(maxBytes / 1024 / 1024).toFixed(0)} MB 限制`);
+      throw new Error(`${label}超过 ${(maxBytes / 1024 / 1024).toFixed(0)} MiB 限制`);
     }
     chunks.push(value);
   }
@@ -60,10 +62,7 @@ const readLimitedBody = async (response: Response, maxBytes: number): Promise<Ui
 const normalizePublicPath = (value: string): string =>
   `/${value.replace(/^\/+|\/+$/g, "")}`;
 
-/**
- * Astro 在静态路由执行前已经复制 public，因此生产构建必须直接写入 dist。
- * 开发服务器则从 public 提供静态文件，两种模式分别选择正确目录。
- */
+/** 生产构建写入 dist，开发服务器则从 public 提供生成的媒体文件。 */
 const resolveDefaultOutputDirectory = (): string => {
   const root = process.cwd();
   return process.env.NODE_ENV === "development"
@@ -71,41 +70,42 @@ const resolveDefaultOutputDirectory = (): string => {
     : path.resolve(root, "dist/notion-assets");
 };
 
-/** 下载单张临时图片并原子替换目标文件，失败不会污染已构建资源。 */
-const downloadImage = async (
-  image: ContentImage,
-  options: Required<Pick<ImageLocalizationOptions, "outputDirectory" | "publicPath" | "maxBytes">> & {
-    fetchImpl: typeof fetch;
-    localizeExternal: boolean;
-  },
-): Promise<ContentImage> => {
+/** 下载单个临时媒体并原子替换目标文件，失败不会留下半截资源。 */
+const downloadMedia = async <T extends ContentMedia>(
+  media: T,
+  kind: MediaKind,
+  options: ResolvedMediaLocalizationOptions,
+): Promise<T> => {
+  const label = kind === "image" ? "Notion 图片" : "Notion 视频";
   let source: URL;
   try {
-    source = new URL(image.url);
+    source = new URL(media.url);
   } catch {
-    throw new Error("Notion 图片地址无效");
+    throw new Error(`${label}地址无效`);
   }
-  if (source.protocol !== "https:") throw new Error("Notion 图片地址必须使用 HTTPS");
+  if (source.protocol !== "https:") throw new Error(`${label}地址必须使用 HTTPS`);
 
   let response: Response;
   try {
     response = await options.fetchImpl(source, { redirect: "follow" });
   } catch {
-    throw new Error("Notion 图片下载请求失败");
+    throw new Error(`${label}下载请求失败`);
   }
-  if (!response.ok) throw new Error(`下载 Notion 图片失败：HTTP ${response.status}`);
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType && !contentType.toLowerCase().startsWith("image/")) {
-    throw new Error(`Notion 图片返回了非图片类型：${contentType}`);
+  if (!response.ok) throw new Error(`下载${label}失败：HTTP ${response.status}`);
+  if (response.url && new URL(response.url).protocol !== "https:") {
+    throw new Error(`${label}下载被重定向到非 HTTPS 地址`);
   }
 
+  const maxBytes = kind === "image" ? options.maxImageBytes : options.maxVideoBytes;
   const declaredBytes = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredBytes) && declaredBytes > options.maxBytes) {
-    throw new Error(`Notion 图片声明大小超过 ${options.maxBytes} 字节`);
+  if (Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
+    throw new Error(`${label}声明大小超过 ${maxBytes} 字节`);
   }
 
-  const body = await readLimitedBody(response, options.maxBytes);
-  const extension = resolveImageExtension(contentType, source);
+  const contentType = response.headers.get("content-type") ?? "";
+  const extension = resolveMediaExtension(kind, contentType, source);
+  const body = await readLimitedBody(response, maxBytes, label);
+  validateMediaSignature(kind, extension, body);
   const contentHash = createHash("sha256").update(body).digest("hex");
   const fileName = `${contentHash}${extension}`;
   const destination = path.join(options.outputDirectory, fileName);
@@ -121,47 +121,55 @@ const downloadImage = async (
   }
 
   return {
-    ...image,
+    ...media,
     url: `${normalizePublicPath(options.publicPath)}/${fileName}`,
     expiryTime: null,
     localized: true,
   };
 };
 
-/** 递归本地化正文块中的图片，并保持原始块对象不可变。 */
+/** 递归本地化正文中的图片与 Notion 上传视频，并保持块对象不可变。 */
 const localizeBlocks = async (
   blocks: ContentBlock[],
-  options: Parameters<typeof downloadImage>[1],
+  options: ResolvedMediaLocalizationOptions,
 ): Promise<ContentBlock[]> => {
   const localized: ContentBlock[] = [];
   for (const block of blocks) {
     const children = await localizeBlocks(block.children, options);
-    const shouldDownload =
-      block.image?.source === "notion" || (options.localizeExternal && !!block.image);
-    const image = shouldDownload
-      ? await downloadImage(block.image!, options)
+    const shouldDownloadImage =
+      block.image?.source === "notion" || (options.localizeExternalImages && !!block.image);
+    const shouldDownloadVideo =
+      block.video?.source === "notion" || (options.localizeExternalVideos && !!block.video);
+    const image = shouldDownloadImage
+      ? await downloadMedia(block.image!, "image", options)
       : block.image;
-    localized.push({ ...block, children, image });
+    const video = shouldDownloadVideo
+      ? await downloadMedia(block.video!, "video", options)
+      : block.video;
+    localized.push({ ...block, children, image, video });
   }
   return localized;
 };
 
-/** 将 ContentEntry 内所有 Notion 临时图片转存到 Astro public 目录。 */
-export const localizeContentEntryImages = async (
+/** 将 ContentEntry 内所有临时媒体转存到 Astro 静态资源目录。 */
+export const localizeContentEntryMedia = async (
   entry: ContentEntry,
-  options: ImageLocalizationOptions = {},
+  options: MediaLocalizationOptions = {},
 ): Promise<ContentEntry> => {
-  const resolvedOptions = {
+  const resolvedOptions: ResolvedMediaLocalizationOptions = {
     outputDirectory: options.outputDirectory ?? resolveDefaultOutputDirectory(),
     publicPath: options.publicPath ?? "/notion-assets",
-    maxBytes: options.maxBytes ?? DEFAULT_MAX_IMAGE_BYTES,
+    maxImageBytes: options.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES,
+    maxVideoBytes: options.maxVideoBytes ?? DEFAULT_MAX_VIDEO_BYTES,
     fetchImpl: options.fetchImpl ?? globalThis.fetch,
-    localizeExternal: options.localizeExternal ?? false,
+    localizeExternalImages: options.localizeExternalImages ?? false,
+    localizeExternalVideos: options.localizeExternalVideos ?? false,
   };
   const shouldLocalizeCover =
-    entry.cover?.source === "notion" || (options.localizeExternal === true && !!entry.cover);
+    entry.cover?.source === "notion" ||
+    (resolvedOptions.localizeExternalImages && !!entry.cover);
   const cover = shouldLocalizeCover
-    ? await downloadImage(entry.cover!, resolvedOptions)
+    ? await downloadMedia(entry.cover!, "image", resolvedOptions)
     : entry.cover;
   const blocks = await localizeBlocks(entry.blocks, resolvedOptions);
   return { ...entry, cover, blocks };
