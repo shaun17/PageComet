@@ -39,7 +39,7 @@
   display: inline-block;
   margin-left: 0.35em;
   content: "↗";
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.75em;
   font-weight: 400;
   transition: transform 180ms ease;
@@ -48,8 +48,7 @@
 .column-index,
 .column-note,
 .directory-links {
-  font-family: var(--font-geist-mono), "SFMono-Regular", Consolas,
-    "Liberation Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .column-index {
@@ -113,6 +112,7 @@
   }
 }
 
+/* 平板使用两列，流水账横跨下一行，避免三列被过度压缩。 */
 @media (max-width: 900px) and (min-width: 601px) {
   .directory {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -127,6 +127,7 @@
   }
 }
 
+/* 手机端将三列转为连续纵向目录，保证链接触控区域充足。 */
 @media (max-width: 600px) {
   .directory {
     display: block;

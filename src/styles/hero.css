@@ -16,8 +16,7 @@
 
 .hero-kicker,
 .hero-meta {
-  font-family: var(--font-geist-mono), "SFMono-Regular", Consolas,
-    "Liberation Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .hero-kicker {
@@ -81,6 +80,7 @@
   }
 }
 
+/* 窄屏保持首屏叙事，同时让简介自然落到标题下方。 */
 @media (max-width: 600px) {
   :root {
     --page-gutter: 1.25rem;
