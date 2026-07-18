@@ -17,23 +17,30 @@ elif ! node -e 'const [major, minor] = process.versions.node.split(".").map(Numb
   echo "当前 Node.js 版本过低。请升级到 22.13 或更高版本。"
 elif [[ ! -f "$project_dir/.env" ]]; then
   exit_status=1
-  echo "缺少 .env。请先执行：cp .env.example .env，然后填写 NOTION_TOKEN。"
+  echo "缺少 .env。请先执行：cp .env.example .env && chmod 600 .env，然后填写 NOTION_TOKEN。"
+# 密钥文件只允许当前用户读取；每次发布前主动收紧权限，避免复制后沿用 0644。
+elif ! /bin/chmod 600 "$project_dir/.env"; then
+  exit_status=1
+  echo "无法将 .env 权限设置为 600，请检查文件所有者。"
 elif ! node --env-file="$project_dir/.env" -e 'for (const name of ["NOTION_TOKEN", "NOTION_DATA_SOURCE_ID"]) { if (!process.env[name]?.trim()) { console.error(`缺少环境变量：${name}`); process.exitCode = 1; } }'; then
   exit_status=1
   echo "请补全 .env 后重新发布。"
 fi
 
-# package-lock.json 变化或首次克隆时执行干净安装，其他发布直接复用现有依赖。
+# 锁文件、系统架构或 Node ABI 变化时重新安装，避免跨机器复用不兼容的原生依赖。
 if (( exit_status == 0 )); then
   lock_hash="$(/usr/bin/shasum -a 256 "$project_dir/package-lock.json" | /usr/bin/awk '{print $1}')"
+  runtime_signature="$(node -p '[process.platform, process.arch, process.versions.modules].join("-")')"
+  dependency_fingerprint="${lock_hash}:${runtime_signature}"
   dependency_marker="$project_dir/node_modules/.wenren-package-lock.sha256"
-  installed_lock_hash=""
-  [[ -f "$dependency_marker" ]] && installed_lock_hash="$(<"$dependency_marker")"
+  installed_fingerprint=""
+  [[ -f "$dependency_marker" ]] && installed_fingerprint="$(<"$dependency_marker")"
 
-  if [[ "$installed_lock_hash" != "$lock_hash" ]]; then
+  if [[ "$installed_fingerprint" != "$dependency_fingerprint" ]]; then
     echo "正在安装项目依赖……"
-    if npm ci; then
-      print -r -- "$lock_hash" > "$dependency_marker"
+    # 显式包含构建依赖，防止机器级 NODE_ENV 或 npm omit 配置跳过 Astro、TypeScript 与 Wrangler。
+    if npm ci --include=dev; then
+      print -r -- "$dependency_fingerprint" > "$dependency_marker"
     else
       exit_status=1
       echo "依赖安装失败，请保留上方错误信息后再排查。"
