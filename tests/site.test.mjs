@@ -207,6 +207,7 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css, /border-block:1px solid var\(--line-strong\)/);
   assert.match(css, /content:"→"/);
+  assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);
   assert.match(

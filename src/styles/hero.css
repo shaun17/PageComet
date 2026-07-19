@@ -168,10 +168,6 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .decimal-year:hover {
-    color: var(--text-muted);
-  }
-
   .decimal-year:hover .decimal-year-progress {
     opacity: 0;
   }
