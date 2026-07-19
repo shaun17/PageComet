@@ -1,6 +1,6 @@
 export const FULL_DECIMAL_PLACES = 18;
 export const REDUCED_DECIMAL_PLACES = 2;
-export const COUNTER_INTERVAL_MS = 100;
+export const COUNTER_INTERVAL_MS = 20;
 
 /** 校验日期并返回访客本地年份的起止毫秒，使数字与当前日历年份一致。 */
 const getLocalYearRange = (date) => {
@@ -24,17 +24,45 @@ const normalizeDecimalPlaces = (decimalPlaces) => {
   return decimalPlaces;
 };
 
+/** 按指定精度计算比例数字，统一正向进度与反向倒计时的 BigInt 截断规则。 */
+const formatFractionDigits = (numerator, denominator, decimalPlaces) => {
+  const scale = 10n ** BigInt(decimalPlaces);
+  return ((numerator * scale) / denominator)
+    .toString()
+    .padStart(decimalPlaces, "0");
+};
+
+/** 将比例转换成保留两位小数的百分比文案。 */
+const formatPercentage = (numerator, denominator) => {
+  const percentageHundredths = (numerator * 10_000n) / denominator;
+  const whole = percentageHundredths / 100n;
+  const decimal = (percentageHundredths % 100n).toString().padStart(2, "0");
+  return `${whole}.${decimal}%`;
+};
+
 /** 将时间转换为十进制年份；BigInt 保证末尾数字稳定递增而非浮点抖动。 */
 export const formatDecimalYear = (date, decimalPlaces = FULL_DECIMAL_PLACES) => {
   const places = normalizeDecimalPlaces(decimalPlaces);
   const { year, start, end } = getLocalYearRange(date);
   if (places === 0) return String(year);
 
-  const scale = 10n ** BigInt(places);
   const elapsed = BigInt(date.getTime() - start);
   const duration = BigInt(end - start);
-  const fraction = ((elapsed * scale) / duration).toString().padStart(places, "0");
+  const fraction = formatFractionDigits(elapsed, duration, places);
   return `${year}.${fraction}`;
+};
+
+/**
+ * 将距离下一年的剩余比例放在年份前面，例如 4537….2027。
+ * 左侧数字持续递减，右侧年份明确倒计时的终点。
+ */
+export const formatRemainingYear = (date, decimalPlaces = FULL_DECIMAL_PLACES) => {
+  const places = normalizeDecimalPlaces(decimalPlaces);
+  const { year, start, end } = getLocalYearRange(date);
+  const remaining = BigInt(end - date.getTime());
+  const duration = BigInt(end - start);
+  const fraction = formatFractionDigits(remaining, duration, places);
+  return `${fraction}.${year + 1}`;
 };
 
 /** 为读屏器生成稳定且易懂的年度进度，不朗读持续跳动的长数字。 */
@@ -42,10 +70,15 @@ export const formatYearProgressLabel = (date) => {
   const { year, start, end } = getLocalYearRange(date);
   const elapsed = BigInt(date.getTime() - start);
   const duration = BigInt(end - start);
-  const percentageHundredths = (elapsed * 10_000n) / duration;
-  const whole = percentageHundredths / 100n;
-  const decimal = (percentageHundredths % 100n).toString().padStart(2, "0");
-  return `${year} 年已过去 ${whole}.${decimal}%`;
+  return `${year} 年已过去 ${formatPercentage(elapsed, duration)}`;
+};
+
+/** 为反向数字生成清晰的下一年剩余比例文案。 */
+export const formatYearRemainingLabel = (date) => {
+  const { year, start, end } = getLocalYearRange(date);
+  const remaining = BigInt(end - date.getTime());
+  const duration = BigInt(end - start);
+  return `距离 ${year + 1} 年还有 ${formatPercentage(remaining, duration)}`;
 };
 
 /**

@@ -1,42 +1,54 @@
 ---
 import {
   formatDecimalYear,
+  formatRemainingYear,
   formatYearProgressLabel,
+  formatYearRemainingLabel,
   FULL_DECIMAL_PLACES,
 } from "../lib/decimal-year.mjs";
 
 // 静态 HTML 先提供构建时的真实值，JavaScript 加载前也不会出现空白或从零跳变。
 const initialNow = new Date();
 const initialValue = formatDecimalYear(initialNow, FULL_DECIMAL_PLACES);
-const initialLabel = formatYearProgressLabel(initialNow);
+const initialRemainingValue = formatRemainingYear(initialNow, FULL_DECIMAL_PLACES);
+const initialLabel = `${formatYearProgressLabel(initialNow)}；${formatYearRemainingLabel(initialNow)}`;
 ---
 
-<p class="decimal-year" data-decimal-year>
+<p class="decimal-year" data-decimal-year tabindex="0">
   <span class="decimal-year-label" data-decimal-year-label>{initialLabel}</span>
   <span class="decimal-year-prefix" aria-hidden="true">YEAR / </span>
-  <span class="decimal-year-value" data-decimal-year-value aria-hidden="true">{initialValue}</span>
+  <span class="decimal-year-values" aria-hidden="true">
+    <span class="decimal-year-value decimal-year-progress" data-decimal-year-value>{initialValue}</span>
+    <span class="decimal-year-value decimal-year-remaining" data-decimal-year-remaining>
+      {initialRemainingValue}
+    </span>
+  </span>
 </p>
 
 <script>
   import {
     createDecimalYearTicker,
     formatDecimalYear,
+    formatRemainingYear,
     formatYearProgressLabel,
+    formatYearRemainingLabel,
   } from "../lib/decimal-year.mjs";
 
   const counter = document.querySelector<HTMLElement>("[data-decimal-year]");
   const value = counter?.querySelector<HTMLElement>("[data-decimal-year-value]");
+  const remainingValue = counter?.querySelector<HTMLElement>("[data-decimal-year-remaining]");
   const label = counter?.querySelector<HTMLElement>("[data-decimal-year-label]");
 
-  if (counter && value && label) {
+  if (counter && value && remainingValue && label) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    /** 更新可见数字，并仅在百分比实际变化时同步无障碍文案。 */
+    /** 同步正向进度与反向倒计时，并仅在百分比实际变化时更新无障碍文案。 */
     const renderCounter = (decimalPlaces: number) => {
       const now = new Date();
       value.textContent = formatDecimalYear(now, decimalPlaces);
+      remainingValue.textContent = formatRemainingYear(now, decimalPlaces);
 
-      const nextLabel = formatYearProgressLabel(now);
+      const nextLabel = `${formatYearProgressLabel(now)}；${formatYearRemainingLabel(now)}`;
       if (label.textContent !== nextLabel) label.textContent = nextLabel;
     };
 

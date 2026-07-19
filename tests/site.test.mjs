@@ -49,9 +49,11 @@ test("builds the complete three-column homepage", async () => {
     html,
     /<div class="hero-meta" aria-label="个人简介"><p>软件工程师，正在成为独立开发者。写代码，做产品，也记录日常。<\/p><p>喜欢运动与健身。也在结识更多有趣的朋友。<\/p><\/div>/,
   );
-  assert.match(html, /class="decimal-year" data-decimal-year/);
+  assert.match(html, /class="decimal-year" data-decimal-year tabindex="0"/);
   assert.match(html, /YEAR \/ /);
   assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}</);
+  assert.match(html, /data-decimal-year-remaining[^>]*>\s*\d{18,19}\.\d{4}\s*</);
+  assert.match(html, /距离 \d{4} 年还有 \d+\.\d{2}%/);
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
@@ -205,6 +207,8 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css, /border-block:1px solid var\(--line-strong\)/);
   assert.match(css, /content:"→"/);
+  assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
+  assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);
   assert.match(css, /--surface-subtle:/);
   assert.match(css, /prefers-color-scheme:dark/);
 });
