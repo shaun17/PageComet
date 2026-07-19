@@ -1,6 +1,12 @@
-# Wenren Home
+<p align="center">
+  <img src="./public/favicon.svg" width="88" height="88" alt="PageComet 图标" />
+</p>
 
-一个可以直接 Fork 或克隆使用的 Notion 个人网站：Astro 在构建阶段读取 Notion 内容，生成完整静态页面，再通过 Cloudflare Pages Direct Upload 发布。
+# PageComet
+
+一个可以直接 Fork 或克隆使用的开源个人网站模板：Astro 在构建阶段读取 Notion 内容，生成完整静态页面，再通过 Cloudflare Pages Direct Upload 发布。
+
+`PageComet` 由 Page 与 Comet 组成：把 Notion 页面交给 Astro 构建，得到快速、独立的静态网站。
 
 线上示例：[wenren.cc](https://wenren.cc)
 
@@ -16,8 +22,8 @@
 Node.js 需要 22.13 或更高版本，仓库已经提供 `.nvmrc`。
 
 ```bash
-git clone https://github.com/shaun17/wenren-home.git
-cd wenren-home
+git clone https://github.com/shaun17/PageComet.git pagecomet
+cd pagecomet
 nvm use
 npm ci
 npm run dev:fixture
@@ -93,6 +99,8 @@ cp site.config.example.mjs site.config.mjs
 ```
 
 `site.config.mjs` 已在 `.gitignore` 中，普通 `git add` 不会收录；不要使用 `git add -f` 强制提交它。`site.config.example.mjs` 始终保持 Alice、`example.com` 和空页面映射。
+
+仓库默认使用 PageComet 图标。需要换成个人标识时，直接替换 `public/favicon.svg`，页面与 README 中的图标引用无需调整；`public/pagecomet-icon.png` 是可用于项目资料和分享场景的 512 × 512 导出版本。
 
 | 配置 | 用途 |
 | --- | --- |

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { PROJECT_META } from "../src/config/project-meta.mjs";
 import { siteConfig } from "../src/config/site-config.mjs";
 
 const projectRoot = new URL("../", import.meta.url);
@@ -77,6 +78,13 @@ test("builds the complete three-column homepage", async () => {
   assert.match(inspirationAnchor, /rel="noopener noreferrer"/);
   assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.prefix)));
   assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.label)));
+  const projectRepositoryAnchor = findAnchor(html, PROJECT_META.repositoryUrl);
+  assert.ok(projectRepositoryAnchor);
+  assert.match(projectRepositoryAnchor, /target="_blank"/);
+  assert.match(projectRepositoryAnchor, /rel="noopener noreferrer"/);
+  assert.ok(
+    html.indexOf('class="design-credit"') < html.indexOf('class="project-repository"'),
+  );
   assert.match(html, /<!--email_off-->/);
   assert.match(html, /<!--\/email_off-->/);
 });

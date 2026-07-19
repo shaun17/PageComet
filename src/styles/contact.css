@@ -6,6 +6,12 @@
   flex-wrap: wrap;
 }
 
+.footer-attribution {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+}
+
 .contact-links {
   display: flex;
   justify-content: flex-start;
@@ -72,7 +78,8 @@
   white-space: nowrap;
 }
 
-.design-credit a {
+.design-credit a,
+.project-repository {
   color: var(--text-primary);
   text-decoration-line: underline;
   text-decoration-color: var(--line-strong);
@@ -82,8 +89,21 @@
     text-decoration-color 180ms ease;
 }
 
+.project-repository {
+  display: inline-flex;
+  min-height: 2.25rem;
+  padding: 0.25rem 0;
+  align-items: center;
+  gap: 0.45em;
+  font-family: var(--font-mono);
+  font-size: clamp(0.625rem, 0.72vw, 0.72rem);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .design-credit a:hover {
+  .design-credit a:hover,
+  .project-repository:hover {
     color: var(--text-muted);
     text-decoration-color: transparent;
   }

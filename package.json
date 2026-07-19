@@ -1,8 +1,8 @@
 {
-  "name": "wenren-home",
+  "name": "pagecomet",
   "version": "1.0.0",
   "private": true,
-  "description": "以 Notion 为内容源、由 Astro 静态生成并部署到 Cloudflare Pages 的个人网站。",
+  "description": "PageComet：以 Notion 为内容源、由 Astro 静态生成并部署到 Cloudflare Pages 的开源个人网站模板。",
   "license": "MIT",
   "type": "module",
   "engines": {

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { preview, type PreviewResult } from "linkpeek";
+import { PROJECT_META } from "../config/project-meta.mjs";
 import type { ContentLinkPreview } from "../lib/notion";
 import {
   createPublicRemoteFetcher,
@@ -137,7 +138,7 @@ const createCachedLinkPreviewResolverInternal = (
         followMetaRefresh: false,
         includeBodyContent: false,
         allowPrivateIPs: false,
-        userAgent: "astro-notion-portfolio-link-preview/1.0",
+        userAgent: PROJECT_META.linkPreviewUserAgent,
       });
       const resolved = normalizePreviewResult(result);
       if (!resolved) throw new Error(`链接摘要响应不可用：HTTP ${result.statusCode}`);
