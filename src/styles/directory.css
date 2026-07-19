@@ -1,11 +1,18 @@
 .directory {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line-strong);
 }
 
 .directory-column {
   min-width: 0;
-  padding-right: clamp(1.25rem, 4vw, 3rem);
+  padding: 1em clamp(1.25rem, 4vw, 3rem) 1.1em 0;
+}
+
+/* 细线只负责区分内容组，不改变现有紧凑的目录高度。 */
+.directory-column + .directory-column {
+  padding-left: clamp(1.25rem, 4vw, 3rem);
+  border-left: 1px solid var(--line);
 }
 
 .directory-column:last-child {
@@ -26,13 +33,24 @@
   letter-spacing: inherit;
 }
 
-.column-heading h2 a,
+.column-heading h2 a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+
+/* 箭头始终可见，悬浮时只做短距离位移，保持目录的安静感。 */
+.column-heading h2 a::after {
+  display: inline-block;
+  content: "→";
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .directory-links a {
   position: relative;
   width: fit-content;
 }
 
-.column-heading h2 a::after,
 .directory-links a::after {
   position: absolute;
   right: 0;
@@ -76,12 +94,19 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .column-heading h2 a:hover::after,
+  .column-heading h2 a:hover::after {
+    transform: translateX(0.22em);
+  }
+
   .directory-links a:hover::after {
     opacity: 0;
     transform: scaleX(0);
     transform-origin: right;
   }
+}
+
+.column-heading h2 a:focus-visible::after {
+  transform: translateX(0.22em);
 }
 
 /* 窄屏沿用参考页的单列顺序，避免把三组链接压缩成窄列。 */
@@ -92,7 +117,12 @@
 
   .directory-column,
   .directory-column:last-child {
-    padding: 0 0 1.5rem;
+    padding: 1em 0 1.25em;
+  }
+
+  .directory-column + .directory-column {
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .column-heading {

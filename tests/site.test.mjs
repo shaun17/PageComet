@@ -203,6 +203,8 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.match(headers, /\/_astro\/\*/);
   assert.match(headers, /\/notion-assets\/\*/);
   assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /border-block:1px solid var\(--line-strong\)/);
+  assert.match(css, /content:"→"/);
   assert.match(css, /--surface-subtle:/);
   assert.match(css, /prefers-color-scheme:dark/);
 });
