@@ -1,11 +1,19 @@
 /** 网站内容在代码中的稳定分类，避免页面层依赖 Notion 里的中文选项。 */
 export type ContentCategory = "career" | "works" | "journal";
 
+/** 构建阶段解析出的公开网页信息，用于生成静态链接摘要。 */
+export interface ContentLinkPreview {
+  title: string;
+  description: string | null;
+  siteName: string;
+}
+
 /** Notion 富文本经过标准化后的格式，页面层只需关心展示语义。 */
 export interface ContentRichText {
   type: "text" | "mention" | "equation" | "unknown";
   plainText: string;
   href: string | null;
+  linkPreview?: ContentLinkPreview;
   annotations: {
     bold: boolean;
     italic: boolean;
@@ -24,9 +32,11 @@ export interface ContentMedia {
   localized: boolean;
 }
 
-/** 图片额外保留替代文本，GIF 会和其他图片一样按原始字节静态化。 */
+/** 图片额外保留替代文本与实际展示尺寸，供页面稳定判断横竖方向。 */
 export interface ContentImage extends ContentMedia {
   alt: string;
+  width?: number;
+  height?: number;
 }
 
 /** 页面正文支持的块类型，未知类型会保留为 unsupported，避免构建直接丢失结构。 */
@@ -78,6 +88,7 @@ export interface ContentBlock {
   image?: ContentImage;
   video?: ContentMedia;
   url?: string;
+  linkPreview?: ContentLinkPreview;
   title?: string;
   cells?: ContentRichText[][];
   table?: {
@@ -131,5 +142,6 @@ export interface MediaLocalizationOptions {
   maxVideoBytes?: number;
   localizeExternalImages?: boolean;
   localizeExternalVideos?: boolean;
-  fetchImpl?: typeof fetch;
+  maxRedirects?: number;
+  requestTimeoutMs?: number;
 }

@@ -19,6 +19,7 @@ export type {
   ContentCategory,
   ContentEntry,
   ContentImage,
+  ContentLinkPreview,
   ContentMedia,
   ContentPropertyNames,
   ContentRichText,

@@ -31,6 +31,9 @@
     "wrangler": "4.112.0"
   },
   "dependencies": {
-    "astro": "^7.1.1"
+    "astro": "^7.1.1",
+    "image-size": "^2.0.2",
+    "linkpeek": "2.1.1",
+    "undici": "7.28.0"
   }
 }
