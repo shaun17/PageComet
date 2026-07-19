@@ -1,7 +1,7 @@
 ---
-import ContactLinks from "../components/ContactLinks.astro";
 import DecimalYear from "../components/DecimalYear.astro";
 import DirectoryColumn from "../components/DirectoryColumn.astro";
+import FooterDetails from "../components/FooterDetails.astro";
 import { ORDERED_CATEGORIES } from "../content/categories";
 import { getSiteContent } from "../content/site-content";
 import SiteLayout from "../layouts/SiteLayout.astro";
@@ -36,7 +36,7 @@ const entries = await getSiteContent();
             ))
           }
         </nav>
-        <ContactLinks />
+        <FooterDetails />
       </footer>
     </section>
   </main>

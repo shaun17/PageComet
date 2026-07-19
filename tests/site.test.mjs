@@ -74,10 +74,15 @@ test("builds the complete three-column homepage", async () => {
 
   const xAnchor = findAnchor(html, "https://x.com/thisiswenren");
   const mailAnchor = findAnchor(html, "mailto:wenrencc@gmail.com");
+  const inspirationAnchor = findAnchor(html, "https://ryo.lu/");
   assert.ok(xAnchor);
   assert.match(xAnchor, /target="_blank"/);
   assert.ok(mailAnchor);
   assert.doesNotMatch(mailAnchor, /target=/);
+  assert.ok(inspirationAnchor);
+  assert.match(inspirationAnchor, /target="_blank"/);
+  assert.match(inspirationAnchor, /rel="noopener noreferrer"/);
+  assert.match(html, /Design inspired by\s*<a[^>]*>Ryo Lu <span aria-hidden="true">↗<\/span><\/a>/);
   assert.match(html, /<!--email_off--><a href="mailto:wenrencc@gmail.com"/);
   assert.match(html, /Mail<\/a><!--\/email_off-->/);
 });
@@ -103,6 +108,7 @@ test("builds category indexes and an internal article", async () => {
 
   for (const html of [career, works, journal, article, migratedCareer, migratedWork, migratedJournal]) {
     assert.match(html, /<title>WENREN<\/title>/);
+    assert.ok(findAnchor(html, "https://ryo.lu/"));
   }
 
   assert.match(career, /01 \/ CAREER/);
