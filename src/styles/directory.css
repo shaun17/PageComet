@@ -11,12 +11,12 @@
 
 /* 细线只负责区分内容组，不改变现有紧凑的目录高度。 */
 .directory-column + .directory-column {
-  padding-left: clamp(1.25rem, 4vw, 3rem);
-  border-left: 1px solid var(--line);
+  padding-inline-start: clamp(1.25rem, 4vw, 3rem);
+  border-inline-start: 1px solid var(--line);
 }
 
 .directory-column:last-child {
-  padding-right: 0;
+  padding-inline-end: 0;
 }
 
 .column-heading {
@@ -121,8 +121,9 @@
   }
 
   .directory-column + .directory-column {
-    border-top: 1px solid var(--line);
-    border-left: 0;
+    padding-inline-start: 0;
+    border-block-start: 1px solid var(--line);
+    border-inline-start: 0;
   }
 
   .column-heading {
