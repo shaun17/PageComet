@@ -1,14 +1,12 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <title>PageComet</title>
-  <defs>
-    <linearGradient id="pagecomet-background" x1="7" y1="5" x2="57" y2="59" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6255F6" />
-      <stop offset="1" stop-color="#9258F5" />
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#pagecomet-background)" />
-  <path d="M11 47C21 46 28 41 34 34" stroke="#FFD84D" stroke-width="7" stroke-linecap="round" />
-  <path d="M15 54C27 52 36 45 41 36" stroke="#FF7A9A" stroke-width="5" stroke-linecap="round" />
+  <rect width="64" height="64" rx="16" fill="#000000" />
+
+  <!-- 三条短、中、长的粗线，代表页面中的文本内容。 -->
+  <path d="M12 34H22" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
+  <path d="M12 43H30" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
+  <path d="M12 52H38" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
+
+  <!-- 四角星回到右上角，与左下文本线形成紧凑的斜向构图。 -->
   <path d="M43 10C44.6 17.4 48.6 21.4 56 23C48.6 24.6 44.6 28.6 43 36C41.4 28.6 37.4 24.6 30 23C37.4 21.4 41.4 17.4 43 10Z" fill="#FFF9ED" />
-  <circle cx="18" cy="20" r="3" fill="#9BF3D0" />
 </svg>
