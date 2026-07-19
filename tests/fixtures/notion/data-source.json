@@ -11,6 +11,7 @@
     "排序": { "id": "order", "name": "排序", "type": "number", "number": {} },
     "置顶": { "id": "featured", "name": "置顶", "type": "checkbox", "checkbox": {} },
     "外部链接": { "id": "external", "name": "外部链接", "type": "url", "url": {} },
+    "GitHub 仓库": { "id": "repository", "name": "GitHub 仓库", "type": "url", "url": {} },
     "标签": { "id": "tags", "name": "标签", "type": "multi_select", "multi_select": {} },
     "封面": { "id": "cover", "name": "封面", "type": "files", "files": {} }
   }

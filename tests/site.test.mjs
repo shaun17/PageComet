@@ -25,6 +25,10 @@ const extractAnchors = (html) => html.match(/<a\b[^>]*>/gi) ?? [];
 const findAnchor = (html, href) =>
   extractAnchors(html).find((anchor) => anchor.includes(`href="${href}"`));
 
+/** 只提取文章标题区的项目入口，避免页脚 GitHub 声明干扰组合断言。 */
+const extractProjectLinks = (html) =>
+  html.match(/<nav class="project-links"[^>]*>[\s\S]*?<\/nav>/)?.[0] ?? "";
+
 /** 把公开配置文字转换为 HTML 文本节点中的安全表示。 */
 const escapeHtmlText = (value) =>
   value
@@ -74,12 +78,14 @@ test("builds the complete three-column homepage", async () => {
   }
   const inspirationAnchor = findAnchor(html, siteConfig.designCredit.href);
   assert.ok(inspirationAnchor);
+  assert.match(inspirationAnchor, /class="animated-underline"/);
   assert.match(inspirationAnchor, /target="_blank"/);
   assert.match(inspirationAnchor, /rel="noopener noreferrer"/);
   assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.prefix)));
   assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.label)));
   const projectRepositoryAnchor = findAnchor(html, PROJECT_META.repositoryUrl);
   assert.ok(projectRepositoryAnchor);
+  assert.match(projectRepositoryAnchor, /class="project-repository animated-underline"/);
   assert.match(projectRepositoryAnchor, /target="_blank"/);
   assert.match(projectRepositoryAnchor, /rel="noopener noreferrer"/);
   assert.ok(html.includes(`Created by ${escapeHtmlText(PROJECT_META.creatorName)}`));
@@ -87,7 +93,8 @@ test("builds the complete three-column homepage", async () => {
     html.indexOf('class="design-credit"') < html.indexOf('class="project-credit"'),
   );
   assert.ok(
-    html.indexOf('class="project-credit"') < html.indexOf('class="project-repository"'),
+    html.indexOf('class="project-credit"') <
+      html.indexOf(`href="${PROJECT_META.repositoryUrl}"`),
   );
   assert.match(html, /<!--email_off-->/);
   assert.match(html, /<!--\/email_off-->/);
@@ -101,7 +108,18 @@ test("builds category indexes and an internal article", async () => {
     ),
   );
 
-  const [career, works, journal, article, exampleCareer, exampleWork, exampleJournal] =
+  const [
+    career,
+    works,
+    journal,
+    article,
+    exampleCareer,
+    exampleWork,
+    repositoryOnlyWork,
+    projectOnlyWork,
+    duplicateLinkWork,
+    exampleJournal,
+  ] =
     await Promise.all([
       readRoute("career/index.html"),
       readRoute("works/index.html"),
@@ -109,10 +127,24 @@ test("builds category indexes and an internal article", async () => {
       readRoute("journal/writing-with-notion/index.html"),
       readRoute("career/northstar-studio/index.html"),
       readRoute("works/atlas-notes/index.html"),
+      readRoute("works/focus-timer/index.html"),
+      readRoute("works/pocket-gallery/index.html"),
+      readRoute("works/shared-link/index.html"),
       readRoute("journal/a-city-walk/index.html"),
     ]);
 
-  for (const html of [career, works, journal, article, exampleCareer, exampleWork, exampleJournal]) {
+  for (const html of [
+    career,
+    works,
+    journal,
+    article,
+    exampleCareer,
+    exampleWork,
+    repositoryOnlyWork,
+    projectOnlyWork,
+    duplicateLinkWork,
+    exampleJournal,
+  ]) {
     assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
     assert.ok(findAnchor(html, siteConfig.designCredit.href));
   }
@@ -134,6 +166,46 @@ test("builds category indexes and an internal article", async () => {
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
   assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
   assert.match(exampleJournal, /<h1>一段城市散步<\/h1>/);
+
+  const projectAnchor = findAnchor(exampleWork, "https://atlas-notes.example.com/");
+  const repositoryAnchor = findAnchor(
+    exampleWork,
+    "https://github.com/example/atlas-notes/",
+  );
+  assert.match(exampleWork, /<nav class="project-links" aria-label="项目链接">/);
+  for (const anchor of [projectAnchor, repositoryAnchor]) {
+    assert.ok(anchor);
+    assert.match(anchor, /class="animated-underline"/);
+    assert.match(anchor, /target="_blank"/);
+    assert.match(anchor, /rel="noopener noreferrer"/);
+  }
+  assert.ok(
+    exampleWork.indexOf("https://atlas-notes.example.com/") <
+      exampleWork.indexOf("https://github.com/example/atlas-notes/"),
+  );
+  const repositoryOnlyAnchor = findAnchor(
+    repositoryOnlyWork,
+    "https://github.com/example/focus-timer/",
+  );
+  assert.ok(repositoryOnlyAnchor);
+  assert.match(repositoryOnlyWork, /<nav class="project-links" aria-label="项目链接">/);
+  assert.doesNotMatch(extractProjectLinks(repositoryOnlyWork), /<span>访问项目<\/span>/);
+  const projectOnlyAnchor = findAnchor(
+    projectOnlyWork,
+    "https://pocket-gallery.example.com/",
+  );
+  assert.ok(projectOnlyAnchor);
+  assert.match(projectOnlyWork, /<nav class="project-links" aria-label="项目链接">/);
+  assert.doesNotMatch(extractProjectLinks(projectOnlyWork), /<span>GitHub<\/span>/);
+  const duplicateLinkNav = extractProjectLinks(duplicateLinkWork);
+  assert.equal(
+    (duplicateLinkNav.match(/href="https:\/\/github\.com\/example\/shared-link\/"/g) ?? [])
+      .length,
+    1,
+  );
+  assert.doesNotMatch(duplicateLinkNav, /<span>访问项目<\/span>/);
+  assert.match(duplicateLinkNav, /<span>GitHub<\/span>/);
+  assert.doesNotMatch(exampleJournal, /class="project-links"/);
 
   assert.match(article, /<h1>用 Notion 写一篇文章<\/h1>/);
   assert.match(article, /class="notion-content"/);
@@ -267,14 +339,24 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);
+  const animatedUnderlineRule = css.match(/\.animated-underline\{([^}]*)\}/)?.[1];
+  assert.ok(animatedUnderlineRule);
+  assert.match(animatedUnderlineRule, /transition:color \.22s/);
   assert.match(
     css,
-    /\.hero h1 a:hover,\.hero h1 a:focus-visible\{color:var\(--text-muted\)\}/,
+    /\.animated-underline:hover,\.animated-underline:focus-visible\{color:var\(--text-muted\)\}/,
   );
-  assert.match(
-    css,
-    /\.hero h1 a:hover:after,\.hero h1 a:focus-visible:after\{transform-origin:100%;transform:scaleX\(0\)\}/,
-  );
+  const animatedUnderlineHoverRule = css.match(
+    /\.animated-underline:hover:after,\.animated-underline:focus-visible:after\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(animatedUnderlineHoverRule);
+  assert.match(animatedUnderlineHoverRule, /transform:scaleX\(0\)/);
+  assert.match(animatedUnderlineHoverRule, /transform-origin:100%/);
+  const projectLinksRule = css.match(/\.project-links\{([^}]*)\}/)?.[1];
+  assert.ok(projectLinksRule);
+  assert.match(projectLinksRule, /display:flex/);
+  assert.match(projectLinksRule, /flex-wrap:wrap/);
+  assert.match(projectLinksRule, /gap:\.5rem 1\.25rem/);
   assert.match(css, /--surface-subtle:/);
   const mentionRule = css.match(/\.notion-content \.notion-mention\{([^}]*)\}/)?.[1];
   assert.ok(mentionRule);

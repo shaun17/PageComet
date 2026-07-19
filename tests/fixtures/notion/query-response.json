@@ -30,6 +30,7 @@
         "排序": { "id": "order", "type": "number", "number": 10 },
         "置顶": { "id": "featured", "type": "checkbox", "checkbox": false },
         "外部链接": { "id": "external", "type": "url", "url": null },
+        "GitHub 仓库": { "id": "repository", "type": "url", "url": null },
         "标签": {
           "id": "tags",
           "type": "multi_select",
@@ -63,6 +64,11 @@
         "排序": { "id": "order", "type": "number", "number": 20 },
         "置顶": { "id": "featured", "type": "checkbox", "checkbox": false },
         "外部链接": { "id": "external", "type": "url", "url": "https://example.com/work" },
+        "GitHub 仓库": {
+          "id": "repository",
+          "type": "url",
+          "url": "https://github.com/example/external-work"
+        },
         "标签": { "id": "tags", "type": "multi_select", "multi_select": [] },
         "封面": { "id": "cover", "type": "files", "files": [] }
       }

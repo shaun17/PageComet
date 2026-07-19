@@ -4,6 +4,7 @@ import { CATEGORY_DEFINITIONS } from "../content/categories";
 import SiteLayout from "../layouts/SiteLayout.astro";
 import NotionBlocks from "./NotionBlocks.astro";
 import PageFooter from "./PageFooter.astro";
+import ProjectLinks from "./ProjectLinks.astro";
 
 interface Props {
   entry: ContentEntry;
@@ -35,6 +36,10 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
         </p>
         <h1>{entry.title}</h1>
         {entry.summary && <p class="article-summary">{entry.summary}</p>}
+        <ProjectLinks
+          projectUrl={entry.externalUrl}
+          repositoryUrl={entry.repositoryUrl}
+        />
       </header>
 
       {entry.cover && (

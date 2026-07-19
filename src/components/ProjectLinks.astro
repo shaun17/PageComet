@@ -1,0 +1,38 @@
+---
+interface Props {
+  projectUrl: string | null;
+  repositoryUrl: string | null;
+}
+
+interface ProjectLink {
+  href: string;
+  label: string;
+}
+
+const { projectUrl, repositoryUrl } = Astro.props;
+// 项目体验入口优先于源码入口；相同地址只保留语义更准确的 GitHub 入口。
+const links: ProjectLink[] = [];
+if (projectUrl && projectUrl !== repositoryUrl) {
+  links.push({ href: projectUrl, label: "访问项目" });
+}
+if (repositoryUrl) links.push({ href: repositoryUrl, label: "GitHub" });
+---
+
+{
+  links.length > 0 && (
+    <nav class="project-links" aria-label="项目链接">
+      {links.map((link) => (
+        <a
+          class="animated-underline"
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${link.label}（在新标签页打开）`}
+        >
+          <span>{link.label}</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      ))}
+    </nav>
+  )
+}

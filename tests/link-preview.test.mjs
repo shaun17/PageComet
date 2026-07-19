@@ -67,6 +67,7 @@ const createEntry = (blocks) => ({
   featured: false,
   tags: [],
   externalUrl: null,
+  repositoryUrl: null,
   notionUrl: "https://www.notion.so/link-preview-entry",
   route: "/journal/link-preview-entry",
   cover: null,

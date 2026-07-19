@@ -113,6 +113,7 @@ export interface ContentEntry {
   featured: boolean;
   tags: string[];
   externalUrl: string | null;
+  repositoryUrl: string | null;
   notionUrl: string;
   route: string;
   cover: ContentImage | null;
@@ -130,6 +131,7 @@ export interface ContentPropertyNames {
   order: string;
   featured: string;
   externalUrl: string;
+  repositoryUrl: string;
   tags: string;
   cover: string;
 }

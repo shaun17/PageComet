@@ -32,6 +32,7 @@ export const DEFAULT_CONTENT_PROPERTIES: Readonly<ContentPropertyNames> = {
   order: "排序",
   featured: "置顶",
   externalUrl: "外部链接",
+  repositoryUrl: "GitHub 仓库",
   tags: "标签",
   cover: "封面",
 };
@@ -105,6 +106,7 @@ export const validateContentSchema = (
     [names.order, "number"],
     [names.featured, "checkbox"],
     [names.externalUrl, "url"],
+    [names.repositoryUrl, "url"],
     [names.tags, "multi_select"],
     [names.cover, "files"],
   ];
@@ -140,13 +142,50 @@ const normalizeOrder = (value: number | null, pageId: string): number => {
   return value;
 };
 
-/** 校验外部链接仅使用网页协议，避免内容层注入危险 scheme。 */
-const normalizeExternalUrl = (value: string | null, pageId: string): string | null => {
+/** 校验公开链接仅使用网页协议，避免内容层注入危险 scheme。 */
+const normalizePublicUrl = (
+  value: string | null,
+  pageId: string,
+  propertyName: string,
+): string | null => {
   if (!value) return null;
-  const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error(`Notion 页面 ${pageId} 的外部链接仅支持 http/https`);
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`Notion 页面 ${pageId} 的「${propertyName}」不是有效网址`);
   }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error(`Notion 页面 ${pageId} 的「${propertyName}」仅支持 http/https`);
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error(`Notion 页面 ${pageId} 的「${propertyName}」不能包含用户名或密码`);
+  }
+  return parsed.toString();
+};
+
+/** GitHub 字段只接受仓库根地址，避免页面把普通网页错误标注为源码入口。 */
+const normalizeRepositoryUrl = (
+  value: string | null,
+  pageId: string,
+  propertyName: string,
+): string | null => {
+  const normalized = normalizePublicUrl(value, pageId, propertyName);
+  if (!normalized) return null;
+
+  const parsed = new URL(normalized);
+  const hostname = parsed.hostname.toLowerCase();
+  const pathParts = parsed.pathname.split("/").filter(Boolean);
+  const validHostname = hostname === "github.com" || hostname === "www.github.com";
+  if (parsed.protocol !== "https:" || !validHostname || pathParts.length !== 2) {
+    throw new Error(
+      `Notion 页面 ${pageId} 的「${propertyName}」必须是完整的 GitHub 仓库地址，例如 https://github.com/owner/repository`,
+    );
+  }
+
+  parsed.hostname = "github.com";
+  parsed.search = "";
+  parsed.hash = "";
   return parsed.toString();
 };
 
@@ -173,9 +212,15 @@ export const normalizeContentPage = (
     throw new Error(`Notion 页面 ${page.id} 的摘要必须为 1 到 200 个字符`);
   }
   const publishedAt = readDateProperty(getPageProperty(page, names.publishedAt));
-  const externalUrl = normalizeExternalUrl(
+  const externalUrl = normalizePublicUrl(
     readUrlProperty(getPageProperty(page, names.externalUrl)),
     page.id,
+    names.externalUrl,
+  );
+  const repositoryUrl = normalizeRepositoryUrl(
+    readUrlProperty(getPageProperty(page, names.repositoryUrl)),
+    page.id,
+    names.repositoryUrl,
   );
   if (!publishedAt) throw new Error(`文章「${title}」必须填写发布日期`);
   const propertyCover = readFilesProperty(getPageProperty(page, names.cover), title);
@@ -195,6 +240,7 @@ export const normalizeContentPage = (
     featured: readCheckboxProperty(getPageProperty(page, names.featured)),
     tags: readMultiSelectProperty(getPageProperty(page, names.tags)),
     externalUrl,
+    repositoryUrl,
     notionUrl: page.url,
     route: `/${category}/${encodeURIComponent(slug)}`,
     cover,

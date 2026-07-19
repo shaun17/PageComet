@@ -46,25 +46,8 @@
 }
 
 .hero h1 a {
-  position: relative;
   display: inline-block;
   margin-left: 0.12em;
-  transition: color 220ms ease;
-}
-
-.hero h1 a::after {
-  position: absolute;
-  right: 0;
-  bottom: 0.05em;
-  left: 0.02em;
-  height: 0.035em;
-  background: currentColor;
-  content: "";
-  opacity: 0.2;
-  pointer-events: none;
-  transform: scaleX(1);
-  transform-origin: left;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 年份、简介、目录和联系方式共享同一条左侧起始轴。 */
@@ -154,17 +137,6 @@
 
 .site-footer {
   margin-top: 1em;
-}
-
-.hero h1 a:hover,
-.hero h1 a:focus-visible {
-  color: var(--text-muted);
-}
-
-.hero h1 a:hover::after,
-.hero h1 a:focus-visible::after {
-  transform: scaleX(0);
-  transform-origin: right;
 }
 
 @media (hover: hover) and (pointer: fine) {

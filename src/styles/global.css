@@ -72,6 +72,41 @@ a:focus-visible {
   outline-offset: 0.24rem;
 }
 
+/* 主标题与页脚声明共享同一条收束动效，避免相同交互在不同位置逐渐失去一致性。 */
+.animated-underline {
+  --animated-underline-bottom: 0.05em;
+  --animated-underline-height: 0.035em;
+  --animated-underline-left: 0.02em;
+  position: relative;
+  transition: color 220ms ease;
+}
+
+.animated-underline::after {
+  position: absolute;
+  right: 0;
+  bottom: var(--animated-underline-bottom);
+  left: var(--animated-underline-left);
+  height: var(--animated-underline-height);
+  background: currentColor;
+  content: "";
+  opacity: 0.2;
+  pointer-events: none;
+  transform: scaleX(1);
+  transform-origin: left;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animated-underline:hover,
+.animated-underline:focus-visible {
+  color: var(--text-muted);
+}
+
+.animated-underline:hover::after,
+.animated-underline:focus-visible::after {
+  transform: scaleX(0);
+  transform-origin: right;
+}
+
 /* 仅用透明度建立阅读顺序，避免位移干扰大字号与网格的稳定位置。 */
 @keyframes content-reveal {
   from {

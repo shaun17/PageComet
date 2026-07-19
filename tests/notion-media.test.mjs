@@ -34,6 +34,7 @@ const createEntry = (blocks) => ({
   featured: false,
   tags: [],
   externalUrl: null,
+  repositoryUrl: null,
   notionUrl: "https://www.notion.so/media-entry",
   route: "/journal/media-entry",
   cover: null,

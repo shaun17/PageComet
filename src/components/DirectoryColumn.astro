@@ -10,8 +10,8 @@ interface Props {
 
 const { category, entries } = Astro.props;
 const headingId = `directory-${category.key}`;
-// 首页保持紧凑，只展示每个分类最靠前的四项，其余内容进入分类页。
-const visibleEntries = entries.slice(0, 4);
+// 首页保持紧凑，只展示每个分类最靠前的三项，其余内容进入分类页。
+const visibleEntries = entries.slice(0, 3);
 ---
 
 <section class="directory-column" aria-labelledby={headingId}>

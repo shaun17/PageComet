@@ -78,6 +78,7 @@ const INTERNAL_ARTICLE: ContentEntry = {
   featured: false,
   tags: ["随笔", "技术"],
   externalUrl: null,
+  repositoryUrl: null,
   notionUrl: "https://www.notion.so/11111111222233334444555555555555",
   route: "/journal/writing-with-notion",
   cover: null,

@@ -9,13 +9,13 @@ import { siteConfig } from "../config/runtime-site-config";
   <div class="footer-attribution">
     <p class="design-credit">
       <span>{siteConfig.designCredit.prefix}</span>
-      <a href={siteConfig.designCredit.href} target="_blank" rel="noopener noreferrer">{siteConfig.designCredit.label} {siteConfig.designCredit.suffix && <span aria-hidden="true">{siteConfig.designCredit.suffix}</span>}</a>
+      <a class="animated-underline" href={siteConfig.designCredit.href} target="_blank" rel="noopener noreferrer">{siteConfig.designCredit.label} {siteConfig.designCredit.suffix && <span aria-hidden="true">{siteConfig.designCredit.suffix}</span>}</a>
     </p>
     <p class="project-credit">
       <span>Created by {PROJECT_META.creatorName}</span>
       <span aria-hidden="true">·</span>
       <a
-        class="project-repository"
+        class="project-repository animated-underline"
         href={PROJECT_META.repositoryUrl}
         target="_blank"
         rel="noopener noreferrer"

@@ -10,6 +10,7 @@
   display: flex;
   align-items: flex-end;
   flex-direction: column;
+  gap: 0.6rem;
 }
 
 .contact-links {
@@ -64,9 +65,7 @@
 
 .design-credit {
   display: inline-flex;
-  min-height: 2.75rem;
   margin: 0;
-  padding: 0.625rem 0;
   align-items: center;
   gap: 0.55em;
   color: var(--text-muted);
@@ -74,24 +73,20 @@
   font-size: clamp(0.625rem, 0.72vw, 0.72rem);
   font-weight: 400;
   letter-spacing: 0.04em;
-  line-height: 1;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
 .design-credit a,
 .project-repository {
+  --animated-underline-bottom: -0.16em;
+  --animated-underline-height: 1px;
+  --animated-underline-left: 0;
   color: var(--text-primary);
-  text-decoration-line: underline;
-  text-decoration-color: var(--line-strong);
-  text-underline-offset: 0.22em;
-  transition:
-    color 180ms ease,
-    text-decoration-color 180ms ease;
 }
 
 .project-credit {
   display: inline-flex;
-  min-height: 2.25rem;
   margin: 0;
   align-items: center;
   gap: 0.55em;
@@ -100,21 +95,12 @@
   font-size: clamp(0.625rem, 0.72vw, 0.72rem);
   font-weight: 400;
   letter-spacing: 0.04em;
-  line-height: 1;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
 .project-repository {
   display: inline-flex;
-  min-height: 2.25rem;
   align-items: center;
   gap: 0.45em;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .design-credit a:hover,
-  .project-repository:hover {
-    color: var(--text-muted);
-    text-decoration-color: transparent;
-  }
 }

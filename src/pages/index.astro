@@ -19,7 +19,7 @@ if (!headlineCategory) throw new Error("首页标题指向了不存在的分类"
     <section class="hero" aria-labelledby="hero-title">
       <p class="hero-kicker">{siteConfig.brand.kicker}</p>
 
-      <h1 id="hero-title">{siteConfig.home.headline.prefix}<a href={headlineCategory.path}>{siteConfig.home.headline.linkLabel}</a>{siteConfig.home.headline.suffix}</h1>
+      <h1 id="hero-title">{siteConfig.home.headline.prefix}<a class="animated-underline" href={headlineCategory.path}>{siteConfig.home.headline.linkLabel}</a>{siteConfig.home.headline.suffix}</h1>
     </section>
 
     <section class="home-information" aria-label="个人信息">
