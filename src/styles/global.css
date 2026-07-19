@@ -30,7 +30,7 @@
 
 :root {
   color-scheme: light;
-  --page-background: #fafaf8;
+  --page-background: #ffffff;
   --text-primary: #111111;
   --text-muted: rgba(17, 17, 17, 0.62);
   --line: rgba(17, 17, 17, 0.22);
@@ -71,16 +71,14 @@ a:focus-visible {
   outline-offset: 0.24rem;
 }
 
-/* 轻量入场只帮助建立阅读顺序，不承担装饰作用。 */
+/* 仅用透明度建立阅读顺序，避免位移干扰大字号与网格的稳定位置。 */
 @keyframes content-reveal {
   from {
     opacity: 0;
-    transform: translateY(0.45rem);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

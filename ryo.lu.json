@@ -1,0 +1,107 @@
+{
+  "source": "https://ryo.lu/",
+  "tokens": {
+    "spacing": {
+      "scale": [3.2, 16, 24, 28.8, 36, 72, 144],
+      "base_unit": 16
+    },
+    "typography": {
+      "families": ["nbintl", "nbintl-mono"],
+      "scale": [
+        {
+          "role": "hero",
+          "size": "115.2px",
+          "weight": "500",
+          "family": "nbintl"
+        },
+        {
+          "role": "body",
+          "size": "16px",
+          "weight": "400",
+          "family": "nbintl-mono"
+        },
+        {
+          "role": "link",
+          "size": "16px",
+          "weight": "400",
+          "family": "nbintl-mono",
+          "letter_spacing": "0.8px",
+          "line_height": "24px"
+        }
+      ]
+    },
+    "colors": [
+      {
+        "role": "background",
+        "value": "#FFFFFF"
+      },
+      {
+        "role": "text-primary",
+        "value": "#111111"
+      },
+      {
+        "role": "hero-underline",
+        "value": "rgba(0, 0, 0, 0.20)"
+      },
+      {
+        "role": "link-underline",
+        "value": "rgba(17, 17, 17, 0.40)"
+      }
+    ],
+    "radius": [],
+    "shadows": [],
+    "image_ratios": [],
+    "grid": {
+      "max_width": "1152px at a 1440px viewport",
+      "columns": 2,
+      "gutter": "0px",
+      "outer_margin": "144px"
+    }
+  },
+  "taste": [
+    {
+      "name": "留白就是分区",
+      "trigger": "当首句与个人信息需要被区分时",
+      "decision": "选择 630px 高的首屏和连续白底，而不是分割线、背景色块或卡片",
+      "reason": "读者会先停在唯一的大句子上，再自然下移到事实信息；分区不需要额外图形解释",
+      "evidence": [
+        "header 高 630px",
+        "主句仅占约 150px 高",
+        "卡片、圆角和站点级阴影数量均为 0"
+      ]
+    },
+    {
+      "name": "两级字号，拒绝中间态",
+      "trigger": "当一句身份声明需要压过其余所有信息时",
+      "decision": "选择 115.2px 与 16px 的 7.2:1 跳差，而不是建立多档标题字号",
+      "reason": "读者不会犹豫哪里是主角，次要内容则保持相同语气供快速浏览",
+      "evidence": [
+        "可见字号仅 115.2px 和 16px",
+        "字重仅 500 和 400",
+        "主句行高 149.76px，正文行高 20.8px 或 24px"
+      ]
+    },
+    {
+      "name": "单轴骨架",
+      "trigger": "当 1440px 画布只有少量文字需要组织时",
+      "decision": "选择 x=144px 与 x=720px 两条固定起始轴，而不是居中卡片或分散对齐",
+      "reason": "可预测的起点让大面积空白仍有秩序，眼睛不必反复寻找下一段",
+      "evidence": [
+        "左右外边距各 144px",
+        "内容宽 1152px",
+        "下方两列各 576px 且 gutter 为 0px"
+      ]
+    },
+    {
+      "name": "动作只证明页面活着",
+      "trigger": "当静态个人主页需要一点持续存在感时",
+      "decision": "选择实时年龄数字与克制的进入动效，而不是背景动画、插画或滚动特效",
+      "reason": "变化传达的是人的时间正在流动，不会从姓名、工作和链接上夺走注意力",
+      "evidence": [
+        "年龄保留 20 位小数并持续更新",
+        "进入动画为 2s、1.2s 和 0.8s",
+        "页面没有内容图片，主链接只使用 4px 半透明下划线"
+      ]
+    }
+  ]
+}

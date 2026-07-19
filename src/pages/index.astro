@@ -15,29 +15,29 @@ const entries = await getSiteContent();
       <p class="hero-kicker">WENRENHAO / Software Engineer</p>
 
       <h1 id="hero-title">wenren 在做<a href="/works/">独立产品</a>。</h1>
-
-      <div class="hero-details">
-        <DecimalYear />
-
-        <div class="hero-meta" aria-label="个人简介">
-          <p>软件工程师，正在成为独立开发者。写代码，做产品，也记录日常。</p>
-          <p>喜欢运动与健身。也在结识更多有趣的朋友。</p>
-        </div>
-      </div>
     </section>
 
-    <footer class="site-footer">
-      <nav class="directory" aria-label="内容目录">
-        {
-          ORDERED_CATEGORIES.map((category) => (
-            <DirectoryColumn
-              category={category}
-              entries={entries.filter((entry) => entry.category === category.key)}
-            />
-          ))
-        }
-      </nav>
-      <ContactLinks />
-    </footer>
+    <section class="home-information" aria-label="个人信息">
+      <DecimalYear />
+
+      <div class="hero-meta" aria-label="个人简介">
+        <p>软件工程师，正在成为独立开发者。写代码，做产品，也记录日常。</p>
+        <p>喜欢运动与健身。也在结识更多有趣的朋友。</p>
+      </div>
+
+      <footer class="site-footer">
+        <nav class="directory" aria-label="内容目录">
+          {
+            ORDERED_CATEGORIES.map((category) => (
+              <DirectoryColumn
+                category={category}
+                entries={entries.filter((entry) => entry.category === category.key)}
+              />
+            ))
+          }
+        </nav>
+        <ContactLinks />
+      </footer>
+    </section>
   </main>
 </SiteLayout>
