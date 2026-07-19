@@ -89,16 +89,26 @@
     text-decoration-color 180ms ease;
 }
 
+.project-credit {
+  display: inline-flex;
+  min-height: 2.25rem;
+  margin: 0;
+  align-items: center;
+  gap: 0.55em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: clamp(0.625rem, 0.72vw, 0.72rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .project-repository {
   display: inline-flex;
   min-height: 2.25rem;
-  padding: 0.25rem 0;
   align-items: center;
   gap: 0.45em;
-  font-family: var(--font-mono);
-  font-size: clamp(0.625rem, 0.72vw, 0.72rem);
-  letter-spacing: 0.04em;
-  line-height: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {

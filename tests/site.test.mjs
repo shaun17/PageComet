@@ -82,8 +82,12 @@ test("builds the complete three-column homepage", async () => {
   assert.ok(projectRepositoryAnchor);
   assert.match(projectRepositoryAnchor, /target="_blank"/);
   assert.match(projectRepositoryAnchor, /rel="noopener noreferrer"/);
+  assert.ok(html.includes(`Created by ${escapeHtmlText(PROJECT_META.creatorName)}`));
   assert.ok(
-    html.indexOf('class="design-credit"') < html.indexOf('class="project-repository"'),
+    html.indexOf('class="design-credit"') < html.indexOf('class="project-credit"'),
+  );
+  assert.ok(
+    html.indexOf('class="project-credit"') < html.indexOf('class="project-repository"'),
   );
   assert.match(html, /<!--email_off-->/);
   assert.match(html, /<!--\/email_off-->/);
