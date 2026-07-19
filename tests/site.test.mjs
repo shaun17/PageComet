@@ -82,7 +82,10 @@ test("builds the complete three-column homepage", async () => {
   assert.ok(inspirationAnchor);
   assert.match(inspirationAnchor, /target="_blank"/);
   assert.match(inspirationAnchor, /rel="noopener noreferrer"/);
-  assert.match(html, /Design inspired by\s*<a[^>]*>Ryo Lu <span aria-hidden="true">↗<\/span><\/a>/);
+  assert.match(
+    html,
+    /<span>Design inspired by<\/span>\s*<a[^>]*>Ryo Lu <span aria-hidden="true">↗<\/span><\/a>/,
+  );
   assert.match(html, /<!--email_off--><a href="mailto:wenrencc@gmail.com"/);
   assert.match(html, /Mail<\/a><!--\/email_off-->/);
 });

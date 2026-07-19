@@ -57,9 +57,12 @@
 }
 
 .design-credit {
+  display: inline-flex;
   min-height: 2.75rem;
   margin: 0;
   padding: 0.625rem 0;
+  align-items: center;
+  gap: 0.55em;
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: clamp(0.625rem, 0.72vw, 0.72rem);
