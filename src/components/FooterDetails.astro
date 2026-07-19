@@ -1,11 +1,12 @@
 ---
 import ContactLinks from "./ContactLinks.astro";
+import { siteConfig } from "../config/runtime-site-config";
 ---
 
 <div class="footer-details">
   <ContactLinks />
   <p class="design-credit">
-    <span>Design inspired by</span>
-    <a href="https://ryo.lu/" target="_blank" rel="noopener noreferrer">Ryo Lu <span aria-hidden="true">↗</span></a>
+    <span>{siteConfig.designCredit.prefix}</span>
+    <a href={siteConfig.designCredit.href} target="_blank" rel="noopener noreferrer">{siteConfig.designCredit.label} {siteConfig.designCredit.suffix && <span aria-hidden="true">{siteConfig.designCredit.suffix}</span>}</a>
   </p>
 </div>

@@ -6,8 +6,8 @@ import type {
 } from "../lib/notion";
 import { CONTENT_SNAPSHOT } from "./content-snapshot";
 
-const LEGACY_QTRADE_URL =
-  "https://wenmsg.notion.site/QTrade-3a1f211130e4800d8a5bc3fb3ffeaaf2";
+const EXAMPLE_CAREER_URL =
+  "https://www.notion.so/a1111111111141118111111111111111";
 
 const PRODUCT_LINK_PREVIEW: ContentLinkPreview = {
   title: "示例产品",
@@ -89,9 +89,9 @@ const INTERNAL_ARTICLE: ContentEntry = {
       text("站内链接也会改写："),
       text("本文", "https://www.notion.so/11111111222233334444555555555555"),
     ]),
-    block("external-entry-link", "paragraph", [
-      text("旧内容链接会继续前往："),
-      text("QTrade", LEGACY_QTRADE_URL),
+    block("related-entry-link", "paragraph", [
+      text("相关内容会改写为站内链接："),
+      text("Northstar Studio", EXAMPLE_CAREER_URL),
     ]),
     block("external-url-link", "paragraph", [
       text("外部链接也会显示为 mention："),
@@ -110,14 +110,14 @@ const INTERNAL_ARTICLE: ContentEntry = {
     ]),
     {
       ...block("internal-bookmark", "bookmark"),
-      url: LEGACY_QTRADE_URL,
-      caption: [text("QTrade 静态详情")],
+      url: EXAMPLE_CAREER_URL,
+      caption: [text("Northstar Studio 静态详情")],
     },
     {
       ...block("internal-table", "table", [], [
         {
           ...block("internal-table-row", "table_row"),
-          cells: [[text("相关经历")], [text("QTrade", LEGACY_QTRADE_URL)]],
+          cells: [[text("相关经历")], [text("Northstar Studio", EXAMPLE_CAREER_URL)]],
         },
       ]),
       table: { hasColumnHeader: false, hasRowHeader: false },
@@ -128,7 +128,7 @@ const INTERNAL_ARTICLE: ContentEntry = {
     ]),
     block("list-one", "bulleted_list_item", [text("正文、标题和摘要都会在构建时读取。")]),
     block("list-two", "bulleted_list_item", [text("草稿不会进入网站，也不会生成公开地址。")]),
-    block("quote", "quote", [text("Notion 负责写作，wenren.cc 负责最终呈现。")]),
+    block("quote", "quote", [text("Notion 负责写作，静态网站负责最终呈现。")]),
     {
       ...block("animated-gif", "image"),
       image: {

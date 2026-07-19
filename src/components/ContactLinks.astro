@@ -1,11 +1,18 @@
+---
+import { siteConfig } from "../config/runtime-site-config";
+---
+
 <nav class="contact-links" aria-label="联系方式">
-  <a
-    href="https://x.com/thisiswenren"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="在 X 上查看 Wenren"
-  >X</a>
   <!--email_off-->
-  <a href="mailto:wenrencc@gmail.com" aria-label="发送邮件至 wenrencc@gmail.com">Mail</a>
+  {
+    siteConfig.contacts.map((contact) => (
+      <a
+        href={contact.href}
+        target={contact.external ? "_blank" : undefined}
+        rel={contact.external ? "noopener noreferrer" : undefined}
+        aria-label={contact.ariaLabel}
+      >{contact.label}</a>
+    ))
+  }
   <!--/email_off-->
 </nav>

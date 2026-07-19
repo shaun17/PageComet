@@ -21,6 +21,7 @@ export interface LoadPublishedContentOptions {
   properties?: Partial<ContentPropertyNames>;
   media?: false | MediaLocalizationOptions;
   maxBlockDepth?: number;
+  allowEmptySite?: boolean;
 }
 
 /** 创建内容客户端；显式参数优先，缺失时读取构建环境变量。 */
@@ -30,6 +31,16 @@ const resolveClient = (options: LoadPublishedContentOptions): NotionClient => {
     token: options.token ?? process.env.NOTION_TOKEN ?? "",
     dataSourceId: options.dataSourceId ?? process.env.NOTION_DATA_SOURCE_ID ?? "",
   });
+};
+
+/** 空站必须由调用方或环境变量明确开启，避免数据库权限错误时覆盖线上内容。 */
+const resolveAllowEmptySite = (explicitValue: boolean | undefined): boolean => {
+  if (explicitValue !== undefined) return explicitValue;
+  const rawValue = process.env.ALLOW_EMPTY_SITE?.trim().toLowerCase();
+  if (!rawValue) return false;
+  if (rawValue === "true") return true;
+  if (rawValue === "false") return false;
+  throw new Error("ALLOW_EMPTY_SITE 仅支持 true 或 false");
 };
 
 /** 判断块树是否包含真实可展示内容，用于拦截误发布的空白内部文章。 */
@@ -89,6 +100,11 @@ export const loadPublishedContent = async (
   const dataSource = await client.retrieveDataSource();
   validateContentSchema(dataSource, names);
   const pages = await client.queryDataSource(createPublishedContentQuery(names));
+  if (pages.length === 0 && !resolveAllowEmptySite(options.allowEmptySite)) {
+    throw new Error(
+      "Notion 没有查询到任何已发布内容，已阻止生成空站；确需空站时设置 ALLOW_EMPTY_SITE=true",
+    );
+  }
   const entries: ContentEntry[] = [];
 
   for (const page of pages) {

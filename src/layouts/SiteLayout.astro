@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { siteConfig } from "../config/runtime-site-config";
 
 interface Props {
   title?: string;
@@ -9,18 +10,18 @@ interface Props {
 
 const {
   title,
-  description = "Wenren 的个人网站，收录职业经历、独立作品与日常记录。",
+  description = siteConfig.brand.description,
   type = "website",
 } = Astro.props;
-const socialTitle = title ? `${title} — Wenren` : "Wenren — 软件工程师与独立开发者";
+const socialTitle = title ? `${title} — ${siteConfig.brand.name}` : siteConfig.brand.socialTitle;
 // 浏览器标签始终展示固定品牌名，页面标题只保留给社交分享元数据。
-const browserTitle = "WENREN";
+const browserTitle = siteConfig.brand.browserTitle;
 // Astro.site 由站点配置固定，构建时为每个静态页面生成唯一规范地址。
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang={siteConfig.locale}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

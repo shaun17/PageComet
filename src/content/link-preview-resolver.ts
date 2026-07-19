@@ -137,7 +137,7 @@ const createCachedLinkPreviewResolverInternal = (
         followMetaRefresh: false,
         includeBodyContent: false,
         allowPrivateIPs: false,
-        userAgent: "wenren.cc-link-preview/1.0 (+https://wenren.cc/)",
+        userAgent: "astro-notion-portfolio-link-preview/1.0",
       });
       const resolved = normalizePreviewResult(result);
       if (!resolved) throw new Error(`链接摘要响应不可用：HTTP ${result.statusCode}`);

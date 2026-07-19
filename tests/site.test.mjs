@@ -1,28 +1,17 @@
 import assert from "node:assert/strict";
 import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { siteConfig } from "../src/config/site-config.mjs";
 
 const projectRoot = new URL("../", import.meta.url);
 const buildRoot = new URL("../dist/", import.meta.url);
-const legacyExternalUrls = [
-  "https://wenmsg.notion.site/QTrade-3a1f211130e4800d8a5bc3fb3ffeaaf2?pvs=25",
-  "https://wenmsg.notion.site/Kingdee-3a1f211130e480608e16f7a50c77c42b?pvs=25",
-  "https://wenmsg.notion.site/CoolBox-3a1f211130e48038a132d55dbbfcc6e3?pvs=25",
-  "https://wenmsg.notion.site/1c0f211130e480218e58e66af61f09e2?pvs=25",
-  "https://wenmsg.notion.site/Petly-Care-2c8f211130e480918bdfec198e501273?pvs=25",
-  "https://wenmsg.notion.site/retimeber-1aff211130e4808d9511f5cddb8d8a30?pvs=25",
-  "https://wenmsg.notion.site/IDPhotoMaker-IOS-APP-133f211130e4808d9df7ecb870a4ca84?pvs=25",
-  "https://wenmsg.notion.site/3a1f211130e480b0b3e1c8c30b902517",
-];
 const expectedInternalRoutes = [
-  "/career/qtrade/",
-  "/career/kingdee/",
-  "/career/coolbox/",
-  "/works/client-development-experiments/",
-  "/works/petly-care/",
-  "/works/retimeber/",
-  "/works/id-photo-maker/",
-  "/journal/journal/",
+  "/career/northstar-studio/",
+  "/career/beacon-labs/",
+  "/works/atlas-notes/",
+  "/works/focus-timer/",
+  "/works/pocket-gallery/",
+  "/journal/a-city-walk/",
 ];
 
 /** 读取某个静态路由的最终 HTML，而不是只验证 Astro 源码。 */
@@ -35,20 +24,28 @@ const extractAnchors = (html) => html.match(/<a\b[^>]*>/gi) ?? [];
 const findAnchor = (html, href) =>
   extractAnchors(html).find((anchor) => anchor.includes(`href="${href}"`));
 
+/** 把公开配置文字转换为 HTML 文本节点中的安全表示。 */
+const escapeHtmlText = (value) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 /** 首页保持极简三列，并且原有内容和联系入口没有丢失。 */
 test("builds the complete three-column homepage", async () => {
   const html = await readRoute();
 
-  assert.match(html, /<html lang="zh-CN">/i);
-  assert.match(html, /<title>WENREN<\/title>/);
-  assert.match(html, /WENRENHAO \/ Software Engineer/);
-  assert.match(html, /wenren 在做/);
+  assert.ok(html.includes(`<html lang="${siteConfig.locale}">`));
+  assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
+  assert.ok(html.includes(escapeHtmlText(siteConfig.brand.kicker)));
+  assert.ok(html.includes(escapeHtmlText(siteConfig.home.headline.prefix)));
   assert.match(html, /<section class="home-information" aria-label="个人信息">/);
   assert.doesNotMatch(html, /class="hero-details"/);
-  assert.match(
-    html,
-    /<div class="hero-meta" aria-label="个人简介"><p>软件工程师，正在成为独立开发者。写代码，做产品，也记录日常。<\/p><p>喜欢运动与健身。也在结识更多有趣的朋友。<\/p><\/div>/,
-  );
+  for (const paragraph of siteConfig.home.biography) {
+    assert.ok(html.includes(escapeHtmlText(paragraph)));
+  }
   assert.match(html, /class="decimal-year" data-decimal-year tabindex="0"/);
   assert.match(html, /YEAR \/ /);
   assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}</);
@@ -68,26 +65,20 @@ test("builds the complete three-column homepage", async () => {
     assert.doesNotMatch(anchor, /target=/);
   }
 
-  for (const href of legacyExternalUrls) {
-    assert.equal(findAnchor(html, href), undefined, `首页不应继续跳转旧 Notion 地址：${href}`);
+  for (const contact of siteConfig.contacts) {
+    const anchor = findAnchor(html, contact.href);
+    assert.ok(anchor, `首页应包含联系方式：${contact.key}`);
+    if (contact.external) assert.match(anchor, /target="_blank"/);
+    else assert.doesNotMatch(anchor, /target=/);
   }
-
-  const xAnchor = findAnchor(html, "https://x.com/thisiswenren");
-  const mailAnchor = findAnchor(html, "mailto:wenrencc@gmail.com");
-  const inspirationAnchor = findAnchor(html, "https://ryo.lu/");
-  assert.ok(xAnchor);
-  assert.match(xAnchor, /target="_blank"/);
-  assert.ok(mailAnchor);
-  assert.doesNotMatch(mailAnchor, /target=/);
+  const inspirationAnchor = findAnchor(html, siteConfig.designCredit.href);
   assert.ok(inspirationAnchor);
   assert.match(inspirationAnchor, /target="_blank"/);
   assert.match(inspirationAnchor, /rel="noopener noreferrer"/);
-  assert.match(
-    html,
-    /<span>Design inspired by<\/span>\s*<a[^>]*>Ryo Lu <span aria-hidden="true">↗<\/span><\/a>/,
-  );
-  assert.match(html, /<!--email_off--><a href="mailto:wenrencc@gmail.com"/);
-  assert.match(html, /Mail<\/a><!--\/email_off-->/);
+  assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.prefix)));
+  assert.ok(html.includes(escapeHtmlText(siteConfig.designCredit.label)));
+  assert.match(html, /<!--email_off-->/);
+  assert.match(html, /<!--\/email_off-->/);
 });
 
 /** 三个分类页统一由内容数据生成，全部条目都具有站内静态详情页。 */
@@ -98,39 +89,39 @@ test("builds category indexes and an internal article", async () => {
     ),
   );
 
-  const [career, works, journal, article, migratedCareer, migratedWork, migratedJournal] =
+  const [career, works, journal, article, exampleCareer, exampleWork, exampleJournal] =
     await Promise.all([
       readRoute("career/index.html"),
       readRoute("works/index.html"),
       readRoute("journal/index.html"),
       readRoute("journal/writing-with-notion/index.html"),
-      readRoute("career/qtrade/index.html"),
-      readRoute("works/petly-care/index.html"),
-      readRoute("journal/journal/index.html"),
+      readRoute("career/northstar-studio/index.html"),
+      readRoute("works/atlas-notes/index.html"),
+      readRoute("journal/a-city-walk/index.html"),
     ]);
 
-  for (const html of [career, works, journal, article, migratedCareer, migratedWork, migratedJournal]) {
-    assert.match(html, /<title>WENREN<\/title>/);
-    assert.ok(findAnchor(html, "https://ryo.lu/"));
+  for (const html of [career, works, journal, article, exampleCareer, exampleWork, exampleJournal]) {
+    assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
+    assert.ok(findAnchor(html, siteConfig.designCredit.href));
   }
 
   assert.match(career, /01 \/ CAREER/);
-  assert.match(career, /QTrade/);
-  assert.match(career, /Kingdee/);
-  assert.match(career, /CoolBox/);
+  assert.match(career, /Northstar Studio/);
+  assert.match(career, /Beacon Labs/);
   assert.match(works, /02 \/ WORKS/);
-  assert.match(works, /Petly Care/);
-  assert.match(works, /IDPhotoMaker/);
+  assert.match(works, /Atlas Notes/);
+  assert.match(works, /Focus Timer/);
+  assert.match(works, /Pocket Gallery/);
   assert.match(journal, /03 \/ JOURNAL/);
   assert.ok(findAnchor(journal, "/journal/writing-with-notion/"));
-  assert.ok(findAnchor(career, "/career/qtrade/"));
-  assert.ok(findAnchor(works, "/works/petly-care/"));
-  assert.ok(findAnchor(journal, "/journal/journal/"));
+  assert.ok(findAnchor(career, "/career/northstar-studio/"));
+  assert.ok(findAnchor(works, "/works/atlas-notes/"));
+  assert.ok(findAnchor(journal, "/journal/a-city-walk/"));
 
-  assert.match(migratedCareer, /<h1>QTrade<\/h1>/);
-  assert.match(migratedCareer, /软件工程与交易系统相关的职业经历。/);
-  assert.match(migratedWork, /<h1>Petly Care<\/h1>/);
-  assert.match(migratedJournal, /<h1>流水账<\/h1>/);
+  assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
+  assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
+  assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
+  assert.match(exampleJournal, /<h1>一段城市散步<\/h1>/);
 
   assert.match(article, /<h1>用 Notion 写一篇文章<\/h1>/);
   assert.match(article, /class="notion-content"/);
@@ -161,16 +152,20 @@ test("builds category indexes and an internal article", async () => {
   assert.match(article, /src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/);
   assert.match(article, /src="https:\/\/player\.vimeo\.com\/video\/226053498\?h=a1599a8ee9"/);
   assert.equal((article.match(/allowfullscreen/g) ?? []).length, 2);
-  assert.match(article, /href="https:\/\/wenren\.cc\/journal\/writing-with-notion\/"/);
+  assert.ok(
+    article.includes(
+      `href="${siteConfig.origin}/journal/writing-with-notion/"`,
+    ),
+  );
   const internalArticleAnchor = findAnchor(article, "/journal/writing-with-notion/");
   assert.ok(internalArticleAnchor);
   assert.doesNotMatch(internalArticleAnchor, /target=/);
   assert.match(internalArticleAnchor, /class="notion-mention notion-mention-internal"/);
   assert.doesNotMatch(article, /www\.notion\.so\/11111111222233334444555555555555/);
-  const migratedEntryAnchor = findAnchor(article, "/career/qtrade/");
-  assert.ok(migratedEntryAnchor);
-  assert.doesNotMatch(migratedEntryAnchor, /target=/);
-  assert.match(migratedEntryAnchor, /class="notion-mention notion-mention-internal"/);
+  const relatedEntryAnchor = findAnchor(article, "/career/northstar-studio/");
+  assert.ok(relatedEntryAnchor);
+  assert.doesNotMatch(relatedEntryAnchor, /target=/);
+  assert.match(relatedEntryAnchor, /class="notion-mention notion-mention-internal"/);
   const externalMentionAnchor = findAnchor(
     article,
     "https://example.com/product?source=notion",
@@ -200,10 +195,9 @@ test("builds category indexes and an internal article", async () => {
   assert.equal((article.match(/class="notion-link notion-link-card"/g) ?? []).length, 2);
   assert.match(article, /独立链接会像 Notion 一样直接展示标题、来源与简短摘要。/);
   assert.equal(
-    extractAnchors(article).filter((anchor) => anchor.includes('href="/career/qtrade/"')).length,
+    extractAnchors(article).filter((anchor) => anchor.includes('href="/career/northstar-studio/"')).length,
     3,
   );
-  assert.doesNotMatch(article, /wenmsg\.notion\.site/);
   assert.doesNotMatch(article, /<script>alert\("xss"\)<\/script>/);
   assert.match(article, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
   assert.doesNotMatch(article, /javascript:alert/);
@@ -227,11 +221,12 @@ test("keeps generated files static and credential-free", async () => {
 });
 
 /** Cloudflare Pages 配置、缓存响应头和本地字体随构建一起交付。 */
-test("keeps Cloudflare Pages configuration deployable", async () => {
-  const [headers, wrangler, packageJson, cssNames] = await Promise.all([
+test("keeps Cloudflare Pages Direct Upload configuration deployable", async () => {
+  const [headers, packageJson, deployScript, license, cssNames] = await Promise.all([
     readRoute("_headers"),
-    readFile(new URL("wrangler.jsonc", projectRoot), "utf8"),
     readFile(new URL("package.json", projectRoot), "utf8"),
+    readFile(new URL("scripts/deploy.mjs", projectRoot), "utf8"),
+    readFile(new URL("LICENSE", projectRoot), "utf8"),
     readdir(new URL("_astro/", buildRoot)),
     access(new URL("favicon.svg", buildRoot)),
     access(new URL("fonts/geist-98bbbccb.woff2", buildRoot)),
@@ -241,10 +236,12 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.ok(cssFile);
   const css = await readFile(new URL(`_astro/${cssFile}`, buildRoot), "utf8");
 
-  assert.match(wrangler, /"name": "wenren-home"/);
-  assert.match(wrangler, /"pages_build_output_dir": "\.\/dist"/);
-  assert.match(packageJson, /"build": "CONTENT_SOURCE=notion astro build"/);
-  assert.match(packageJson, /wrangler pages deploy dist/);
+  assert.match(packageJson, /"build": "cross-env CONTENT_SOURCE=notion astro build"/);
+  assert.match(packageJson, /"deploy": "node --env-file-if-exists=\.env scripts\/deploy\.mjs"/);
+  assert.match(deployScript, /"pages",\s*"deploy"/);
+  assert.match(deployScript, /deployment\.pagesProject/);
+  assert.doesNotMatch(deployScript, /--env-file/);
+  assert.match(license, /^MIT License/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /script-src 'self' https:\/\/static\.cloudflareinsights\.com/);

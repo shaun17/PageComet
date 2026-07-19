@@ -1,3 +1,5 @@
+import { isSiteHostname } from "../config/site-origin";
+
 export interface SafeContentHref {
   href: string;
   kind: "internal" | "external" | "email";
@@ -22,7 +24,7 @@ export const normalizeContentHref = (
       kind:
         url.protocol === "mailto:"
           ? "email"
-          : url.hostname === "wenren.cc" || url.hostname.endsWith(".wenren.cc")
+          : isSiteHostname(url.hostname)
             ? "internal"
             : "external",
     };

@@ -1,19 +1,15 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
-import { createServer } from "vite";
+import { siteConfig } from "../src/config/site-config.mjs";
+import { createTestViteServer } from "./vite-test-server.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite, readRichText, renderRichText;
 
 /** 使用项目自身的 Vite 配置加载 TypeScript 富文本渲染器。 */
 before(async () => {
-  vite = await createServer({
-    root: projectRoot,
-    logLevel: "silent",
-    appType: "custom",
-    server: { middlewareMode: true },
-  });
+  vite = await createTestViteServer(projectRoot);
   ({ renderRichText } = await vite.ssrLoadModule("/src/content/render-rich-text.ts"));
   ({ readRichText } = await vite.ssrLoadModule("/src/lib/notion/values.ts"));
 });
@@ -106,7 +102,7 @@ test("distinguishes internal, email, and native Notion mentions", () => {
   const internal = renderRichText([richText("站内文章", "/journal/article/")]);
   const email = renderRichText([richText("写邮件", "mailto:hello@example.com")]);
   const nativeMention = renderRichText([
-    richText("关联页面", "https://wenren.cc/works/project/", "mention"),
+    richText("关联页面", `${siteConfig.origin}/works/project/`, "mention"),
   ]);
 
   assert.match(internal, /class="notion-mention notion-mention-internal"/);
@@ -127,7 +123,7 @@ test("preserves native mention semantics from the Notion API", () => {
     {
       type: "mention",
       plain_text: "关联作品",
-      href: "https://wenren.cc/works/project/",
+      href: `${siteConfig.origin}/works/project/`,
       mention: { type: "page", page: { id: "11111111-2222-3333-4444-555555555555" } },
       annotations: {},
     },

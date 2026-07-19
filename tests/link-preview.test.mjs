@@ -5,7 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
 import { MockAgent } from "undici";
-import { createServer } from "vite";
+import { siteConfig } from "../src/config/site-config.mjs";
+import { createTestViteServer } from "./vite-test-server.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite;
@@ -17,12 +18,7 @@ let fetchPublicResource;
 
 /** 使用项目自身的 Vite 配置加载 TypeScript，保证测试和实际构建走同一套模块解析。 */
 before(async () => {
-  vite = await createServer({
-    root: projectRoot,
-    logLevel: "silent",
-    appType: "custom",
-    server: { middlewareMode: true },
-  });
+  vite = await createTestViteServer(projectRoot);
   ({ enrichContentLinkPreviews } = await vite.ssrLoadModule(
     "/src/content/link-preview.ts",
   ));
@@ -106,7 +102,7 @@ test("deduplicates external links and immutably attaches one preview across bloc
       richText: [
         richText("查看产品", externalUrl),
         richText("站内相对链接", "/works/petly-care/"),
-        richText("站内绝对链接", "https://wenren.cc/works/petly-care/"),
+        richText("站内绝对链接", `${siteConfig.origin}/works/petly-care/`),
         richText("邮件", "mailto:hello@example.com"),
       ],
       caption: [richText("图注里的同一产品", normalizedUrl)],
@@ -335,7 +331,7 @@ test("keeps validated DNS records alive and consistently prefers IPv4", async ()
 });
 
 test("reuses a fresh disk cache across resolver instances without another request", async () => {
-  const cacheDirectory = await mkdtemp(path.join(tmpdir(), "wenren-link-preview-"));
+  const cacheDirectory = await mkdtemp(path.join(tmpdir(), "notion-site-link-preview-"));
   const requestedUrl = "https://cache.example/article";
   let requestCount = 0;
   const fetchImpl = async () => {

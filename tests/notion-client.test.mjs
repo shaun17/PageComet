@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
-import { createServer } from "vite";
+import { createTestViteServer } from "./vite-test-server.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite;
@@ -11,12 +11,7 @@ let resolvePropertyNames;
 
 /** 通过项目自身的 Vite 编译链加载 TypeScript 模块，避免测试使用另一套转译规则。 */
 before(async () => {
-  vite = await createServer({
-    root: projectRoot,
-    logLevel: "silent",
-    appType: "custom",
-    server: { middlewareMode: true },
-  });
+  vite = await createTestViteServer(projectRoot);
 
   ({ NotionClient } = await vite.ssrLoadModule("/src/lib/notion/client.ts"));
   ({ createPublishedContentQuery, resolvePropertyNames } =

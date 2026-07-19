@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
-import { createServer } from "vite";
+import { createTestViteServer } from "./vite-test-server.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite;
@@ -9,12 +9,7 @@ let resolveVideoPresentation;
 
 /** 使用 Vite 加载网站的视频地址解析模块。 */
 before(async () => {
-  vite = await createServer({
-    root: projectRoot,
-    logLevel: "silent",
-    appType: "custom",
-    server: { middlewareMode: true },
-  });
+  vite = await createTestViteServer(projectRoot);
   ({ resolveVideoPresentation } = await vite.ssrLoadModule(
     "/src/content/video-presentation.ts",
   ));

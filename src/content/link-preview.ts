@@ -4,6 +4,7 @@ import type {
   ContentLinkPreview,
   ContentRichText,
 } from "../lib/notion";
+import { isSiteHostname } from "../config/site-origin";
 
 export type LinkPreviewResolver = (
   url: string,
@@ -20,7 +21,7 @@ const normalizePreviewUrl = (value: string | null | undefined): string | null =>
   try {
     const url = new URL(value);
     if (!["http:", "https:"].includes(url.protocol)) return null;
-    if (url.hostname === "wenren.cc" || url.hostname.endsWith(".wenren.cc")) return null;
+    if (isSiteHostname(url.hostname)) return null;
     url.hash = "";
     return url.href;
   } catch {

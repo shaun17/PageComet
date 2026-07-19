@@ -10,5 +10,7 @@ public/notion-assets/
 .env
 .env.*
 !.env.example
+# 个人站点信息与 Notion 页面映射只保留在本机；仓库提交通用示例配置。
+site.config.mjs
 .DS_Store
 *.log

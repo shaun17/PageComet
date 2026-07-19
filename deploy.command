@@ -17,12 +17,15 @@ elif ! node -e 'const [major, minor] = process.versions.node.split(".").map(Numb
   echo "当前 Node.js 版本过低。请升级到 22.13 或更高版本。"
 elif [[ ! -f "$project_dir/.env" ]]; then
   exit_status=1
-  echo "缺少 .env。请先执行：cp .env.example .env && chmod 600 .env，然后填写 NOTION_TOKEN。"
+  echo "缺少 .env。请先复制 .env.example，并填写 Notion 与 Cloudflare Pages 配置。"
+elif [[ ! -f "$project_dir/site.config.mjs" ]]; then
+  exit_status=1
+  echo "缺少 site.config.mjs。请先复制 site.config.example.mjs，并填写自己的公开站点信息。"
 # 密钥文件只允许当前用户读取；每次发布前主动收紧权限，避免复制后沿用 0644。
 elif ! /bin/chmod 600 "$project_dir/.env"; then
   exit_status=1
   echo "无法将 .env 权限设置为 600，请检查文件所有者。"
-elif ! node --env-file="$project_dir/.env" -e 'for (const name of ["NOTION_TOKEN", "NOTION_DATA_SOURCE_ID"]) { if (!process.env[name]?.trim()) { console.error(`缺少环境变量：${name}`); process.exitCode = 1; } }'; then
+elif ! node --env-file="$project_dir/.env" -e 'for (const name of ["NOTION_TOKEN", "NOTION_DATA_SOURCE_ID", "CLOUDFLARE_PAGES_PROJECT"]) { if (!process.env[name]?.trim()) { console.error(`缺少环境变量：${name}`); process.exitCode = 1; } }'; then
   exit_status=1
   echo "请补全 .env 后重新发布。"
 fi
@@ -32,7 +35,7 @@ if (( exit_status == 0 )); then
   lock_hash="$(/usr/bin/shasum -a 256 "$project_dir/package-lock.json" | /usr/bin/awk '{print $1}')"
   runtime_signature="$(node -p '[process.platform, process.arch, process.versions.modules].join("-")')"
   dependency_fingerprint="${lock_hash}:${runtime_signature}"
-  dependency_marker="$project_dir/node_modules/.wenren-package-lock.sha256"
+  dependency_marker="$project_dir/node_modules/.package-lock-runtime.sha256"
   installed_fingerprint=""
   [[ -f "$dependency_marker" ]] && installed_fingerprint="$(<"$dependency_marker")"
 
@@ -50,13 +53,19 @@ if (( exit_status == 0 )); then
   fi
 fi
 
-# Cloudflare 授权保存在当前机器；首次运行时引导一次 OAuth 登录并存入 macOS 钥匙串。
-if (( exit_status == 0 )) && ! "$project_dir/node_modules/.bin/wrangler" whoami --env-file "$project_dir/.env" --json >/dev/null 2>&1; then
+# API Token 由隔离部署脚本按白名单传入；没有 Token 时才检查本机 OAuth 状态。
+uses_cloudflare_token=0
+if (( exit_status == 0 )) && node --env-file="$project_dir/.env" -e 'process.exit(process.env.CLOUDFLARE_API_TOKEN?.trim() && process.env.CLOUDFLARE_ACCOUNT_ID?.trim() ? 0 : 1)'; then
+  uses_cloudflare_token=1
+fi
+
+# Cloudflare OAuth 授权保存在当前机器；首次运行时打开浏览器登录。
+if (( exit_status == 0 && uses_cloudflare_token == 0 )) && ! "$project_dir/node_modules/.bin/wrangler" whoami --json >/dev/null 2>&1; then
   echo "当前机器尚未登录 Cloudflare，正在打开授权页面……"
   if ! "$project_dir/node_modules/.bin/wrangler" login --use-keyring; then
     exit_status=1
     echo "Cloudflare 登录失败，请保留上方错误信息后再排查。"
-  elif ! "$project_dir/node_modules/.bin/wrangler" whoami --env-file "$project_dir/.env" --json >/dev/null 2>&1; then
+  elif ! "$project_dir/node_modules/.bin/wrangler" whoami --json >/dev/null 2>&1; then
     exit_status=1
     echo "Cloudflare 授权尚未生效，请重新运行发布脚本。"
   fi
@@ -69,7 +78,8 @@ if (( exit_status == 0 )); then
   echo
   if npm run deploy; then
     echo
-    echo "发布完成：https://wenren.cc"
+    site_url="$(node --input-type=module -e 'import { siteConfig } from "./site.config.mjs"; process.stdout.write(siteConfig.origin)')"
+    echo "发布完成：$site_url"
   else
     exit_status=1
     echo

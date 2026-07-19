@@ -1,4 +1,5 @@
 import type { NotionDataSourceResponse, NotionPageResponse } from "./api-types";
+import { siteConfig } from "../../config/runtime-site-config";
 import type {
   ContentBlock,
   ContentCategory,
@@ -35,11 +36,12 @@ export const DEFAULT_CONTENT_PROPERTIES: Readonly<ContentPropertyNames> = {
   cover: "封面",
 };
 
-const CATEGORY_MAP: Readonly<Record<string, ContentCategory>> = {
-  职业经历: "career",
-  个人作品: "works",
-  流水账: "journal",
-};
+const CATEGORY_MAP: Readonly<Record<string, ContentCategory>> = Object.fromEntries(
+  siteConfig.categories.map((category) => [category.notionOption, category.key]),
+) as Record<string, ContentCategory>;
+const REQUIRED_CATEGORY_OPTIONS = siteConfig.categories.map(
+  (category) => category.notionOption,
+);
 
 /** 读取 SELECT schema 的选项名称，供构建前验证固定枚举。 */
 const readSchemaOptionNames = (value: unknown): Set<string> => {
@@ -115,7 +117,7 @@ export const validateContentSchema = (
     }
   }
 
-  assertSchemaOptions(dataSource, names.category, ["职业经历", "个人作品", "流水账"]);
+  assertSchemaOptions(dataSource, names.category, REQUIRED_CATEGORY_OPTIONS);
   assertSchemaOptions(dataSource, names.status, ["草稿", "已发布", "归档"]);
 };
 
