@@ -209,6 +209,14 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.match(css, /content:"→"/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);
+  assert.match(
+    css,
+    /\.hero h1 a:hover,\.hero h1 a:focus-visible\{color:var\(--text-muted\)\}/,
+  );
+  assert.match(
+    css,
+    /\.hero h1 a:hover:after,\.hero h1 a:focus-visible:after\{transform-origin:100%;transform:scaleX\(0\)\}/,
+  );
   assert.match(css, /--surface-subtle:/);
   assert.match(css, /prefers-color-scheme:dark/);
 });
