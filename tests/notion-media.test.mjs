@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
 import { createServer } from "vite";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
-let vite, localizeContentEntryMedia, normalizeNotionBlock;
+let vite, localizeContentEntryMediaForTest, normalizeNotionBlock;
 /** 使用项目自身的 Vite 配置加载 TypeScript，确保测试与 Astro 构建采用同一规则。 */
 before(async () => {
   vite = await createServer({
@@ -15,7 +15,9 @@ before(async () => {
     appType: "custom",
     server: { middlewareMode: true },
   });
-  ({ localizeContentEntryMedia } = await vite.ssrLoadModule("/src/lib/notion/assets.ts"));
+  ({ localizeContentEntryMediaForTest } = await vite.ssrLoadModule(
+    "/src/lib/notion/assets.ts",
+  ));
   ({ normalizeNotionBlock } = await vite.ssrLoadModule("/src/lib/notion/blocks.ts"));
 });
 /** 测试完成后关闭文件监听器，避免 Node 进程无法退出。 */
@@ -71,7 +73,8 @@ test("preserves Notion video source and expiry metadata during normalization", (
 });
 test("localizes GIF and uploaded video without changing their bytes", async () => {
   const outputDirectory = await mkdtemp(path.join(tmpdir(), "wenren-notion-media-"));
-  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 2, 3]);
+  // 最小 GIF 头声明 1×2 画布，足以验证下载过程会保留字节并提取固有尺寸。
+  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
   const videoBytes = Uint8Array.from([0, 0, 0, 24, 102, 116, 121, 112, 1, 2, 3]);
   const entry = createEntry([
     {
@@ -102,7 +105,7 @@ test("localizes GIF and uploaded video without changing their bytes", async () =
   ]);
 
   try {
-    const localized = await localizeContentEntryMedia(entry, {
+    const localized = await localizeContentEntryMediaForTest(entry, {
       outputDirectory,
       publicPath: "/notion-assets",
       fetchImpl: async (input) =>
@@ -115,6 +118,8 @@ test("localizes GIF and uploaded video without changing their bytes", async () =
     assert.match(gif.image.url, /^\/notion-assets\/[a-f0-9]{64}\.gif$/);
     assert.match(video.video.url, /^\/notion-assets\/[a-f0-9]{64}\.mp4$/);
     assert.equal(gif.image.localized, true);
+    assert.equal(gif.image.width, 1);
+    assert.equal(gif.image.height, 2);
     assert.equal(video.video.localized, true);
     assert.equal(gif.image.expiryTime, null);
     assert.equal(video.video.expiryTime, null);
@@ -150,7 +155,7 @@ test("rejects video larger than the configured Pages asset limit", async () => {
 
   try {
     await assert.rejects(
-      localizeContentEntryMedia(entry, {
+      localizeContentEntryMediaForTest(entry, {
         outputDirectory,
         maxVideoBytes: 3,
         fetchImpl: async () =>
@@ -183,7 +188,7 @@ test("rejects media whose bytes do not match the declared type", async () => {
 
   try {
     await assert.rejects(
-      localizeContentEntryMedia(entry, {
+      localizeContentEntryMediaForTest(entry, {
         outputDirectory,
         fetchImpl: async () =>
           new Response("<html>not an image</html>", {

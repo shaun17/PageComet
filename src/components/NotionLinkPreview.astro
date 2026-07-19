@@ -1,0 +1,57 @@
+---
+import type { ContentLinkPreview } from "../lib/notion";
+import {
+  getContentHrefMark,
+  isRawUrlLabel,
+  normalizeContentHref,
+} from "../content/content-href";
+
+interface Props {
+  id: string;
+  href: string;
+  label: string;
+  preview: ContentLinkPreview;
+  nativeMention?: boolean;
+}
+
+const { id, href, label, preview, nativeMention = false } = Astro.props;
+const safeHref = normalizeContentHref(href);
+const previewId = `notion-link-preview-${id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+const visibleLabel = safeHref && isRawUrlLabel(label, safeHref.href) ? preview.title : label;
+const accessibleDescription = [
+  visibleLabel.trim() === preview.title.trim() ? null : preview.title,
+  preview.siteName,
+  preview.description,
+].filter(Boolean).join("。");
+---
+
+{safeHref && (
+  <p class="notion-link-paragraph">
+    <span class="notion-link notion-link-card">
+      <a
+        class:list={[
+          "notion-mention",
+          `notion-mention-${safeHref.kind}`,
+          { "notion-mention-native": nativeMention },
+        ]}
+        href={safeHref.href}
+        target={safeHref.kind === "external" ? "_blank" : undefined}
+        rel={safeHref.kind === "external" ? "noopener noreferrer" : undefined}
+        aria-describedby={previewId}
+      >
+        <span class="notion-mention-mark" aria-hidden="true">
+          {getContentHrefMark(safeHref)}
+        </span>
+        <span class="notion-mention-label">{visibleLabel}</span>
+      </a>
+      <span id={previewId} class="notion-link-preview-a11y" hidden>{accessibleDescription}</span>
+      <span class="notion-link-preview" aria-hidden="true">
+        <span class="notion-link-preview-title">{preview.title}</span>
+        <span class="notion-link-preview-domain">{preview.siteName}</span>
+        {preview.description && (
+          <span class="notion-link-preview-summary">{preview.description}</span>
+        )}
+      </span>
+    </span>
+  </p>
+)}

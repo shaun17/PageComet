@@ -3,6 +3,7 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+.cache/
 public/notion-assets/
 
 # 本地环境与系统文件

@@ -1,5 +1,6 @@
 ---
 import type { ContentBlock } from "../lib/notion";
+import { isPortraitImageDimensions } from "../content/image-presentation";
 import { richTextToPlainText } from "../content/render-rich-text";
 import { resolveVideoPresentation } from "../content/video-presentation";
 
@@ -11,6 +12,10 @@ const { item } = Astro.props;
 const mediaCaption = richTextToPlainText(item.caption ?? []);
 const mediaTitle = mediaCaption || "文章视频";
 const isAnimatedGif = item.image?.url.toLowerCase().split(/[?#]/, 1)[0]?.endsWith(".gif");
+const imageWidth = item.image?.width;
+const imageHeight = item.image?.height;
+const hasImageDimensions = Boolean(imageWidth && imageHeight);
+const isPortraitImage = isPortraitImageDimensions(imageWidth, imageHeight);
 const videoPresentation =
   item.type === "video" && item.video
     ? resolveVideoPresentation(item.video.url, "video")
@@ -20,8 +25,32 @@ const videoPresentation =
 ---
 
 {item.type === "image" && item.image && (
-  <figure class:list={["notion-image", { "notion-image-gif": isAnimatedGif }]}>
-    <img src={item.image.url} alt={item.image.alt} loading="lazy" decoding="async" />
+  <figure
+    class:list={[
+      "notion-image",
+      {
+        "notion-image-gif": isAnimatedGif,
+        "notion-image-portrait": isPortraitImage,
+      },
+    ]}
+  >
+    <a
+      class="notion-image-link"
+      href={item.image.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={item.image.alt ? `打开原图：${item.image.alt}` : "打开原图"}
+    >
+      <img
+        src={item.image.url}
+        alt={item.image.alt}
+        width={imageWidth}
+        height={imageHeight}
+        loading="lazy"
+        decoding="async"
+        data-notion-image-unmeasured={!hasImageDimensions ? "" : undefined}
+      />
+    </a>
     {mediaCaption && <figcaption>{mediaCaption}</figcaption>}
   </figure>
 )}
@@ -83,7 +112,31 @@ const videoPresentation =
 )}
 
 <script>
+  import { isPortraitImageDimensions } from "../content/image-presentation";
+
+  const unmeasuredImages = document.querySelectorAll<HTMLImageElement>(
+    "[data-notion-image-unmeasured]",
+  );
   const videoPlayers = document.querySelectorAll<HTMLVideoElement>("[data-notion-video]");
+
+  /** 构建阶段无法识别尺寸时，使用浏览器解码后的固有尺寸补上竖图版式。 */
+  const applyIntrinsicImageLayout = (image: HTMLImageElement) => {
+    if (!image.naturalWidth || !image.naturalHeight) return;
+    const figure = image.closest<HTMLElement>(".notion-image");
+    figure?.classList.toggle(
+      "notion-image-portrait",
+      isPortraitImageDimensions(image.naturalWidth, image.naturalHeight),
+    );
+    image.removeAttribute("data-notion-image-unmeasured");
+  };
+
+  for (const image of unmeasuredImages) {
+    if (image.complete) {
+      applyIntrinsicImageLayout(image);
+      continue;
+    }
+    image.addEventListener("load", () => applyIntrinsicImageLayout(image), { once: true });
+  }
 
   for (const player of videoPlayers) {
     const fallback = player.parentElement?.querySelector<HTMLElement>(

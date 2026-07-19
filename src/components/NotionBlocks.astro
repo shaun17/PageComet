@@ -1,6 +1,8 @@
 ---
-import type { ContentBlock } from "../lib/notion";
+import type { ContentBlock, ContentRichText } from "../lib/notion";
 import { renderRichText, richTextToPlainText } from "../content/render-rich-text";
+import { normalizeContentHref } from "../content/content-href";
+import NotionLinkPreview from "./NotionLinkPreview.astro";
 import NotionMedia from "./NotionMedia.astro";
 
 interface Props {
@@ -20,20 +22,16 @@ interface SafeBlockUrl {
 
 /** 书签接受站内相对路径和 HTTP(S) 地址，并区分是否需要新窗口打开。 */
 const safeBlockUrl = (value: string | undefined): SafeBlockUrl | null => {
-  if (!value) return null;
-  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\")) {
-    return { href: value, external: false };
-  }
-  try {
-    const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol)) return null;
-    return {
-      href: url.toString(),
-      external: url.hostname !== "wenren.cc",
-    };
-  } catch {
-    return null;
-  }
+  const href = normalizeContentHref(value);
+  if (!href || href.kind === "email") return null;
+  return { href: href.href, external: href.kind === "external" };
+};
+
+/** 只有独占段落的单个链接才提升为摘要卡，句子中的链接继续保持行内阅读节奏。 */
+const readStandaloneLinkPreview = (item: ContentBlock): ContentRichText | null => {
+  if (item.type !== "paragraph" || item.richText.length !== 1) return null;
+  const span = item.richText[0];
+  return span?.href && span.linkPreview ? span : null;
 };
 
 /** 将连续的 Notion 列表项合并为一个语义正确的 ul 或 ol。 */
@@ -79,14 +77,30 @@ const groups = groupBlocks(blocks);
 
     const item = group.blocks[0];
     const bookmark = safeBlockUrl(item.url);
+    const standaloneLinkPreview = readStandaloneLinkPreview(item);
     return (
       <>
-        {item.type === "paragraph" && (
+        {item.type === "paragraph" && standaloneLinkPreview && (
+          <NotionLinkPreview
+            id={item.id}
+            href={standaloneLinkPreview.href!}
+            label={standaloneLinkPreview.plainText}
+            preview={standaloneLinkPreview.linkPreview!}
+            nativeMention={standaloneLinkPreview.type === "mention"}
+          />
+        )}
+        {item.type === "paragraph" && !standaloneLinkPreview && (
           <p set:html={renderRichText(item.richText)} />
         )}
-        {item.type === "heading_1" && <h2 set:html={renderRichText(item.richText)} />}
-        {item.type === "heading_2" && <h3 set:html={renderRichText(item.richText)} />}
-        {item.type === "heading_3" && <h4 set:html={renderRichText(item.richText)} />}
+        {item.type === "heading_1" && (
+          <h2 set:html={renderRichText(item.richText, { previewMode: "mention" })} />
+        )}
+        {item.type === "heading_2" && (
+          <h3 set:html={renderRichText(item.richText, { previewMode: "mention" })} />
+        )}
+        {item.type === "heading_3" && (
+          <h4 set:html={renderRichText(item.richText, { previewMode: "mention" })} />
+        )}
         {item.type === "quote" && <blockquote set:html={renderRichText(item.richText)} />}
         {item.type === "callout" && (
           <aside class="notion-callout">
@@ -105,7 +119,7 @@ const groups = groupBlocks(blocks);
         )}
         {item.type === "toggle" && (
           <details>
-            <summary set:html={renderRichText(item.richText)} />
+            <summary set:html={renderRichText(item.richText, { previewMode: "mention" })} />
             {item.children.length > 0 && <Astro.self blocks={item.children} />}
           </details>
         )}
@@ -118,15 +132,32 @@ const groups = groupBlocks(blocks);
           </figure>
         )}
         {["image", "video", "embed"].includes(item.type) && <NotionMedia item={item} />}
-        {(item.type === "bookmark" || item.type === "link_preview") && bookmark && (
+        {(item.type === "bookmark" || item.type === "link_preview") &&
+          bookmark &&
+          item.linkPreview && (
+            <NotionLinkPreview
+              id={item.id}
+              href={bookmark.href}
+              label={richTextToPlainText(item.caption) || item.url || bookmark.href}
+              preview={item.linkPreview}
+            />
+          )}
+        {(item.type === "bookmark" || item.type === "link_preview") &&
+          bookmark &&
+          !item.linkPreview && (
           <p class="notion-bookmark">
             <a
+              class={`notion-mention notion-mention-${bookmark.external ? "external" : "internal"}`}
               href={bookmark.href}
               target={bookmark.external ? "_blank" : undefined}
               rel={bookmark.external ? "noopener noreferrer" : undefined}
             >
-              {richTextToPlainText(item.caption) || item.url}
-              <span aria-hidden="true"> {bookmark.external ? "↗" : "→"}</span>
+              <span class="notion-mention-mark" aria-hidden="true">
+                {bookmark.external ? "↗" : "→"}
+              </span>
+              <span class="notion-mention-label">
+                {richTextToPlainText(item.caption) || item.url}
+              </span>
             </a>
           </p>
         )}
@@ -167,3 +198,63 @@ const groups = groupBlocks(blocks);
     );
   })
 }
+
+<script>
+  const inlineLinkPreviews = document.querySelectorAll<HTMLElement>(
+    ".notion-link:not(.notion-link-card)",
+  );
+
+  /** 浮层打开前根据视口边界选择左右和上下方向，避免摘要制造横向滚动。 */
+  const positionLinkPreview = (wrapper: HTMLElement) => {
+    const preview = wrapper.querySelector<HTMLElement>(".notion-link-preview");
+    if (!preview) return;
+    wrapper.removeAttribute("data-preview-place");
+    wrapper.style.removeProperty("--notion-link-preview-shift");
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const previewRect = preview.getBoundingClientRect();
+    const edge = 16;
+    const maximumLeft = Math.max(edge, window.innerWidth - edge - previewRect.width);
+    const clampedLeft = Math.min(Math.max(previewRect.left, edge), maximumLeft);
+    wrapper.style.setProperty(
+      "--notion-link-preview-shift",
+      `${clampedLeft - previewRect.left}px`,
+    );
+    if (
+      wrapperRect.bottom + previewRect.height + edge > window.innerHeight &&
+      wrapperRect.top > previewRect.height + edge
+    ) {
+      wrapper.dataset.previewPlace = "above";
+    }
+  };
+
+  for (const wrapper of inlineLinkPreviews) {
+    /** 再次指向 mention 时解除 Escape 关闭状态并重新计算边界。 */
+    wrapper.addEventListener("pointerenter", () => {
+      wrapper.removeAttribute("data-preview-dismissed");
+      positionLinkPreview(wrapper);
+    });
+    wrapper.addEventListener("focusin", () => {
+      wrapper.removeAttribute("data-preview-dismissed");
+      positionLinkPreview(wrapper);
+    });
+    /** 键盘用户可以在焦点仍留在链接上时关闭遮挡正文的浮层。 */
+    wrapper.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      wrapper.setAttribute("data-preview-dismissed", "");
+      event.preventDefault();
+    });
+    wrapper.addEventListener("focusout", (event) => {
+      if (event.relatedTarget instanceof Node && wrapper.contains(event.relatedTarget)) return;
+      wrapper.removeAttribute("data-preview-dismissed");
+    });
+  }
+
+  let resizeFrame = 0;
+  /** 视口变化后只在下一帧批量重算，避免浮层沿用过期的位置。 */
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      for (const wrapper of inlineLinkPreviews) positionLinkPreview(wrapper);
+    });
+  });
+</script>

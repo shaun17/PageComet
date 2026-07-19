@@ -139,11 +139,20 @@ test("builds category indexes and an internal article", async () => {
   const bookmarkAnchor = findAnchor(article, "https://example.com/reference");
   assert.ok(bookmarkAnchor);
   assert.match(bookmarkAnchor, /target="_blank"/);
+  assert.match(bookmarkAnchor, /class="notion-mention notion-mention-external"/);
   assert.match(article, /<pre><code data-language="shell">/);
   assert.match(article, /<details><summary>/);
   assert.match(
     article,
-    /<img src="\/notion-assets\/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6\.gif" alt="动态操作演示" loading="lazy" decoding="async">/,
+    /<img src="\/notion-assets\/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6\.gif" alt="动态操作演示" loading="lazy" decoding="async" data-notion-image-unmeasured>/,
+  );
+  assert.match(
+    article,
+    /<div class="notion-columns"><section><figure class="notion-image notion-image-portrait"><a class="notion-image-link"[^>]*><img src="\/notion-assets\/ecd0cd4178539f17f752b77ff7ae77fcec37da042bebd8ca274cbea71d4d4205\.png" alt="竖屏截图一" width="360" height="780"/,
+  );
+  assert.equal(
+    (article.match(/class="notion-image notion-image-portrait"/g) ?? []).length,
+    2,
   );
   assert.match(
     article,
@@ -156,10 +165,40 @@ test("builds category indexes and an internal article", async () => {
   const internalArticleAnchor = findAnchor(article, "/journal/writing-with-notion/");
   assert.ok(internalArticleAnchor);
   assert.doesNotMatch(internalArticleAnchor, /target=/);
+  assert.match(internalArticleAnchor, /class="notion-mention notion-mention-internal"/);
   assert.doesNotMatch(article, /www\.notion\.so\/11111111222233334444555555555555/);
   const migratedEntryAnchor = findAnchor(article, "/career/qtrade/");
   assert.ok(migratedEntryAnchor);
   assert.doesNotMatch(migratedEntryAnchor, /target=/);
+  assert.match(migratedEntryAnchor, /class="notion-mention notion-mention-internal"/);
+  const externalMentionAnchor = findAnchor(
+    article,
+    "https://example.com/product?source=notion",
+  );
+  assert.ok(externalMentionAnchor);
+  assert.match(externalMentionAnchor, /class="notion-mention notion-mention-external"/);
+  assert.match(externalMentionAnchor, /target="_blank"/);
+  assert.match(externalMentionAnchor, /rel="noopener noreferrer"/);
+  assert.match(externalMentionAnchor, /aria-describedby="notion-link-preview-\d+-1"/);
+  assert.match(
+    article,
+    /<span class="notion-mention-mark" aria-hidden="true">↗<\/span><span class="notion-mention-label">示例产品<\/span>/,
+  );
+  assert.match(
+    article,
+    /class="notion-link-preview-a11y" hidden>Example。用于验证正文链接摘要/,
+  );
+  assert.match(article, /class="notion-link-preview" aria-hidden="true"/);
+  assert.doesNotMatch(article, /role="tooltip"/);
+  assert.match(article, /用于验证正文链接摘要、站点名称和安全外链属性的构建夹具。/);
+  const standalonePreviewAnchor = findAnchor(
+    article,
+    "https://example.com/product?source=standalone",
+  );
+  assert.ok(standalonePreviewAnchor);
+  assert.match(standalonePreviewAnchor, /aria-describedby="notion-link-preview-external-standalone-link"/);
+  assert.equal((article.match(/class="notion-link notion-link-card"/g) ?? []).length, 2);
+  assert.match(article, /独立链接会像 Notion 一样直接展示标题、来源与简短摘要。/);
   assert.equal(
     extractAnchors(article).filter((anchor) => anchor.includes('href="/career/qtrade/"')).length,
     3,
@@ -228,5 +267,52 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
     /\.hero h1 a:hover:after,\.hero h1 a:focus-visible:after\{transform-origin:100%;transform:scaleX\(0\)\}/,
   );
   assert.match(css, /--surface-subtle:/);
+  const mentionRule = css.match(/\.notion-content \.notion-mention\{([^}]*)\}/)?.[1];
+  assert.ok(mentionRule);
+  assert.match(mentionRule, /display:inline-flex/);
+  assert.match(mentionRule, /max-width:100%/);
+  assert.match(mentionRule, /background:var\(--surface-subtle\)/);
+  const mentionLabelRule = css.match(
+    /\.notion-content \.notion-mention-label\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(mentionLabelRule);
+  assert.match(mentionLabelRule, /min-width:0/);
+  assert.match(mentionLabelRule, /overflow-wrap:anywhere/);
+  assert.match(
+    css,
+    /\.notion-content a\.notion-mention:hover\{border-color:var\(--line-strong\);/,
+  );
+  const linkRule = css.match(/\.notion-content \.notion-link\{([^}]*)\}/)?.[1];
+  assert.ok(linkRule);
+  assert.match(linkRule, /display:grid/);
+  assert.match(linkRule, /width:min\(22rem,100%\)/);
+  const linkCardRule = css.match(/\.notion-content \.notion-link-card\{([^}]*)\}/)?.[1];
+  assert.ok(linkCardRule);
+  assert.match(linkCardRule, /display:grid/);
+  assert.match(linkCardRule, /width:min\(34rem,100%\)/);
+  const linkPreviewRule = css.match(
+    /\.notion-content \.notion-link-preview\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(linkPreviewRule);
+  assert.match(linkPreviewRule, /display:grid/);
+  assert.match(css, /\.notion-content \.notion-link-preview-summary\{/);
+  assert.match(css, /not\(\[data-preview-dismissed\]\):focus-within \.notion-link-preview\{/);
+  assert.match(css, /pointer-events:auto/);
+  assert.match(css, /--notion-link-preview-shift/);
+  assert.match(css, /\.notion-content \.notion-image-portrait\{width:min\(24rem,100%\);margin-inline:auto\}/);
+  assert.match(css, /max-height:min\(75svh,46rem\)/);
+  assert.match(css, /\.notion-columns>section\{min-width:0\}/);
+  assert.match(css, /\.notion-columns \.notion-image,\.notion-columns \.notion-media\{width:100%\}/);
+  const columnImageLinkRule = css.match(/\.notion-columns \.notion-image-link\{([^}]*)\}/)?.[1];
+  assert.ok(columnImageLinkRule);
+  assert.match(columnImageLinkRule, /display:flex/);
+  assert.match(columnImageLinkRule, /width:100%/);
+  assert.match(columnImageLinkRule, /justify-content:center/);
+  const columnPortraitRule = css.match(
+    /\.notion-columns \.notion-image-portrait img\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(columnPortraitRule);
+  assert.match(columnPortraitRule, /max-width:min\(100%,18\.5rem\)/);
+  assert.match(columnPortraitRule, /max-height:min\(70svh,40rem\)/);
   assert.match(css, /prefers-color-scheme:dark/);
 });

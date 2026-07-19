@@ -1,14 +1,36 @@
-import type { ContentBlock, ContentEntry, ContentRichText } from "../lib/notion";
+import type {
+  ContentBlock,
+  ContentEntry,
+  ContentLinkPreview,
+  ContentRichText,
+} from "../lib/notion";
 import { CONTENT_SNAPSHOT } from "./content-snapshot";
 
 const LEGACY_QTRADE_URL =
   "https://wenmsg.notion.site/QTrade-3a1f211130e4800d8a5bc3fb3ffeaaf2";
 
+const PRODUCT_LINK_PREVIEW: ContentLinkPreview = {
+  title: "示例产品",
+  description: "用于验证正文链接摘要、站点名称和安全外链属性的构建夹具。",
+  siteName: "Example",
+};
+
+const REFERENCE_LINK_PREVIEW: ContentLinkPreview = {
+  title: "一个普通网页书签",
+  description: "独立链接会像 Notion 一样直接展示标题、来源与简短摘要。",
+  siteName: "Example",
+};
+
 /** 创建无额外格式的富文本片段，让测试正文保持可读。 */
-const text = (plainText: string, href: string | null = null): ContentRichText => ({
+const text = (
+  plainText: string,
+  href: string | null = null,
+  linkPreview?: ContentLinkPreview,
+): ContentRichText => ({
   type: "text",
   plainText,
   href,
+  ...(linkPreview ? { linkPreview } : {}),
   annotations: {
     bold: false,
     italic: false,
@@ -26,6 +48,21 @@ const block = (
   richText: ContentRichText[] = [],
   children: ContentBlock[] = [],
 ): ContentBlock => ({ id, type, richText, children });
+
+/** 创建竖屏截图夹具，用真实双栏结构验证图片不会突破各自栏位。 */
+const portraitScreenshot = (id: string, alt: string): ContentBlock => ({
+  ...block(id, "image"),
+  image: {
+    url: "/notion-assets/ecd0cd4178539f17f752b77ff7ae77fcec37da042bebd8ca274cbea71d4d4205.png",
+    alt,
+    source: "notion",
+    expiryTime: null,
+    localized: true,
+    width: 360,
+    height: 780,
+  },
+  caption: [text(alt)],
+});
 
 const INTERNAL_ARTICLE: ContentEntry = {
   id: "11111111-2222-3333-4444-555555555555",
@@ -55,6 +92,21 @@ const INTERNAL_ARTICLE: ContentEntry = {
     block("external-entry-link", "paragraph", [
       text("旧内容链接会继续前往："),
       text("QTrade", LEGACY_QTRADE_URL),
+    ]),
+    block("external-url-link", "paragraph", [
+      text("外部链接也会显示为 mention："),
+      text(
+        "https://example.com/product?source=notion",
+        "https://example.com/product?source=notion",
+        PRODUCT_LINK_PREVIEW,
+      ),
+    ]),
+    block("external-standalone-link", "paragraph", [
+      text(
+        "https://example.com/product?source=standalone",
+        "https://example.com/product?source=standalone",
+        PRODUCT_LINK_PREVIEW,
+      ),
     ]),
     {
       ...block("internal-bookmark", "bookmark"),
@@ -88,6 +140,14 @@ const INTERNAL_ARTICLE: ContentEntry = {
       },
       caption: [text("GIF 动画演示")],
     },
+    block("portrait-columns", "column_list", [], [
+      block("portrait-column-one", "column", [], [
+        portraitScreenshot("portrait-screenshot-one", "竖屏截图一"),
+      ]),
+      block("portrait-column-two", "column", [], [
+        portraitScreenshot("portrait-screenshot-two", "竖屏截图二"),
+      ]),
+    ]),
     {
       ...block("uploaded-video", "video"),
       video: {
@@ -117,6 +177,7 @@ const INTERNAL_ARTICLE: ContentEntry = {
       ...block("bookmark", "bookmark"),
       url: "https://example.com/reference",
       caption: [text("一个普通网页书签")],
+      linkPreview: REFERENCE_LINK_PREVIEW,
     },
     {
       ...block("code", "code", [text("CONTENT_SOURCE=notion npm run build")]),
