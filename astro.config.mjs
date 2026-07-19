@@ -8,4 +8,10 @@ export default defineConfig({
   build: {
     format: "directory",
   },
+  // CSP 只允许同源代码执行，因此将体积较小的浏览器脚本也输出为独立文件。
+  vite: {
+    build: {
+      assetsInlineLimit: 0,
+    },
+  },
 });

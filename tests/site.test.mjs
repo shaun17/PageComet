@@ -52,6 +52,8 @@ test("builds the complete three-column homepage", async () => {
   assert.match(html, /class="decimal-year" data-decimal-year/);
   assert.match(html, /YEAR \/ /);
   assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}</);
+  assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
+  assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
   assert.equal((html.match(/class="directory-column"/g) ?? []).length, 3);
   assert.ok(findAnchor(html, "/career/"));
@@ -195,6 +197,8 @@ test("keeps Cloudflare Pages configuration deployable", async () => {
   assert.match(packageJson, /wrangler pages deploy dist/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
   assert.match(headers, /X-Frame-Options: DENY/);
+  assert.match(headers, /script-src 'self' https:\/\/static\.cloudflareinsights\.com/);
+  assert.match(headers, /connect-src 'self' https:\/\/cloudflareinsights\.com/);
   assert.match(headers, /Cache-Control: public, max-age=31536000, immutable/);
   assert.match(headers, /\/_astro\/\*/);
   assert.match(headers, /\/notion-assets\/\*/);
