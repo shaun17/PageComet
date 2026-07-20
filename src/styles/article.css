@@ -3,13 +3,14 @@
   --article-content-width: 46rem;
 }
 
+/* 返回导航与文章主体只保留必要的分组距离，避免标题区出现无内容的大块内边距。 */
 .article-shell article {
+  margin-top: clamp(2.25rem, 3.5vw, 3rem);
   animation: content-reveal 420ms ease-out both;
 }
 
 .article-header {
   max-width: 52rem;
-  padding-top: clamp(4.5rem, 8vw, 7rem);
 }
 
 .article-meta {
@@ -138,10 +139,6 @@
 }
 
 @media (max-width: 600px) {
-  .article-header {
-    padding-top: 3.75rem;
-  }
-
   .article-header h1 {
     font-size: clamp(2.4rem, 12vw, 3.5rem);
   }

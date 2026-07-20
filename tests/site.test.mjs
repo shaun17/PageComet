@@ -376,6 +376,12 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:46rem/);
+  const articleBodyRule = css.match(/\.article-shell article\{([^}]*)\}/)?.[1];
+  assert.ok(articleBodyRule);
+  assert.match(articleBodyRule, /margin-top:clamp\(2\.25rem,3\.5vw,3rem\)/);
+  const articleHeaderRule = css.match(/\.article-header\{([^}]*)\}/)?.[1];
+  assert.ok(articleHeaderRule);
+  assert.doesNotMatch(articleHeaderRule, /padding-top/);
   const projectLinksRule = css.match(/\.project-links\{([^}]*)\}/)?.[1];
   assert.ok(projectLinksRule);
   assert.match(projectLinksRule, /display:flex/);
