@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   createDeploymentScanValues,
@@ -122,4 +123,17 @@ test("keeps fixture tests deterministic when empty-site override exists", () => 
     createTestEnvironment({ PATH: "/usr/bin", ALLOW_EMPTY_SITE: "true" }),
     { PATH: "/usr/bin" },
   );
+});
+
+/** 双击发布也必须在安装依赖或登录 Cloudflare 前发现第二数据源缺失。 */
+test("checks both Notion data sources before the macOS deployment flow", async () => {
+  const launcher = await readFile(new URL("../deploy.command", import.meta.url), "utf8");
+  for (const name of [
+    "NOTION_TOKEN",
+    "NOTION_DATA_SOURCE_ID",
+    "NOTION_JOURNAL_DATA_SOURCE_ID",
+    "CLOUDFLARE_PAGES_PROJECT",
+  ]) {
+    assert.match(launcher, new RegExp(`\\[.*\"${name}\"`));
+  }
 });

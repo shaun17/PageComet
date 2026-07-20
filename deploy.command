@@ -25,7 +25,7 @@ elif [[ ! -f "$project_dir/site.config.mjs" ]]; then
 elif ! /bin/chmod 600 "$project_dir/.env"; then
   exit_status=1
   echo "无法将 .env 权限设置为 600，请检查文件所有者。"
-elif ! node --env-file="$project_dir/.env" -e 'for (const name of ["NOTION_TOKEN", "NOTION_DATA_SOURCE_ID", "CLOUDFLARE_PAGES_PROJECT"]) { if (!process.env[name]?.trim()) { console.error(`缺少环境变量：${name}`); process.exitCode = 1; } }'; then
+elif ! node --env-file="$project_dir/.env" -e 'for (const name of ["NOTION_TOKEN", "NOTION_DATA_SOURCE_ID", "NOTION_JOURNAL_DATA_SOURCE_ID", "CLOUDFLARE_PAGES_PROJECT"]) { if (!process.env[name]?.trim()) { console.error(`缺少环境变量：${name}`); process.exitCode = 1; } }'; then
   exit_status=1
   echo "请补全 .env 后重新发布。"
 fi

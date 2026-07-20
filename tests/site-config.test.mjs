@@ -7,10 +7,12 @@ import { defineSiteConfig } from "../src/config/define-site-config.mjs";
 /** 复制当前有效配置，测试错误输入时不会修改共享的冻结对象。 */
 const createConfig = () => structuredClone(siteConfig);
 
-test("keeps committed configuration generic and local configuration ignored", async () => {
-  const [gitignore, environmentExample] = await Promise.all([
+/** 示例配置、环境模板和 README 必须共同覆盖当前双数据源契约。 */
+test("keeps the reusable configuration and README contract complete", async () => {
+  const [gitignore, environmentExample, readme] = await Promise.all([
     readFile(new URL("../.gitignore", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
 
   assert.equal(siteConfig.origin, "https://portfolio.example.com");
@@ -26,7 +28,33 @@ test("keeps committed configuration generic and local configuration ignored", as
     "CLOUDFLARE_ACCOUNT_ID",
   ]) {
     assert.match(environmentExample, new RegExp(`^${name}=$`, "m"));
+    assert.match(readme, new RegExp(`\\b${name}\\b`));
   }
+  for (const property of [
+    "标题",
+    "Slug",
+    "分类",
+    "状态",
+    "摘要",
+    "发布日期",
+    "排序",
+    "置顶",
+    "外部链接",
+    "GitHub 仓库",
+    "标签",
+    "封面",
+    "内容",
+    "补充内容",
+    "素材",
+    "嵌入链接",
+    "发布时间",
+    "创建时间",
+    "隐藏",
+  ]) {
+    assert.match(readme, new RegExp("\\| `" + property + "` \\|"));
+  }
+  assert.match(readme, /career.*works.*writing.*journal/s);
+  assert.match(readme, /私有 Form/);
 });
 
 test("accepts and deeply freezes a valid site configuration", () => {
