@@ -78,6 +78,10 @@ export const validatePagesProjectEnvironment = (environment) => {
 export const validateDeploymentEnvironment = (environment) => {
   const notionToken = readRequiredValue(environment, "NOTION_TOKEN");
   const notionDataSourceId = readRequiredValue(environment, "NOTION_DATA_SOURCE_ID");
+  const notionJournalDataSourceId = readRequiredValue(
+    environment,
+    "NOTION_JOURNAL_DATA_SOURCE_ID",
+  );
   const pagesProject = validatePagesProjectEnvironment(environment);
 
   if (!/^(?:ntn_|secret_)[A-Za-z0-9_-]{10,}$/.test(notionToken)) {
@@ -86,8 +90,13 @@ export const validateDeploymentEnvironment = (environment) => {
   if (!NOTION_DATA_SOURCE_PATTERN.test(notionDataSourceId)) {
     throw new Error("NOTION_DATA_SOURCE_ID 格式无效：应填写 32 位 Notion 数据源 UUID");
   }
+  if (!NOTION_DATA_SOURCE_PATTERN.test(notionJournalDataSourceId)) {
+    throw new Error(
+      "NOTION_JOURNAL_DATA_SOURCE_ID 格式无效：应填写 32 位 Notion 数据源 UUID",
+    );
+  }
 
-  return { notionToken, notionDataSourceId, pagesProject };
+  return { notionToken, notionDataSourceId, notionJournalDataSourceId, pagesProject };
 };
 
 /** 从环境白名单创建各子进程共享的无凭据基础环境。 */
@@ -111,7 +120,7 @@ export const createTestEnvironment = (environment, astroEnvironmentDirectory) =>
 /** Notion 构建只恢复读取内容所需变量，不传入任何 Cloudflare 配置。 */
 export const createNotionBuildEnvironment = (
   environment,
-  { notionToken, notionDataSourceId },
+  { notionToken, notionDataSourceId, notionJournalDataSourceId },
   astroEnvironmentDirectory,
 ) => {
   const buildEnvironment = {
@@ -121,6 +130,7 @@ export const createNotionBuildEnvironment = (
       : {}),
     NOTION_TOKEN: notionToken,
     NOTION_DATA_SOURCE_ID: notionDataSourceId,
+    NOTION_JOURNAL_DATA_SOURCE_ID: notionJournalDataSourceId,
   };
   const allowEmptySite = environment.ALLOW_EMPTY_SITE?.trim();
   if (allowEmptySite) buildEnvironment.ALLOW_EMPTY_SITE = allowEmptySite;
@@ -157,6 +167,7 @@ export const createDeploymentScanValues = (environment, deployment) => {
   const scanValues = {
     NOTION_TOKEN: deployment.notionToken,
     NOTION_DATA_SOURCE_ID: deployment.notionDataSourceId,
+    NOTION_JOURNAL_DATA_SOURCE_ID: deployment.notionJournalDataSourceId,
     ...Object.fromEntries(
       CLOUDFLARE_WRANGLER_VARIABLES.map((name) => [name, environment[name]?.trim()]),
     ),

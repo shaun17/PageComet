@@ -40,9 +40,10 @@ export const DEFAULT_CONTENT_PROPERTIES: Readonly<ContentPropertyNames> = {
 const CATEGORY_MAP: Readonly<Record<string, ContentCategory>> = Object.fromEntries(
   siteConfig.categories.map((category) => [category.notionOption, category.key]),
 ) as Record<string, ContentCategory>;
-const REQUIRED_CATEGORY_OPTIONS = siteConfig.categories.map(
-  (category) => category.notionOption,
-);
+/** 流水账已迁出文章库，文章 schema 只要求仍由该数据源承载的分类。 */
+const REQUIRED_CATEGORY_OPTIONS = siteConfig.categories
+  .filter((category) => category.key !== "journal")
+  .map((category) => category.notionOption);
 
 /** 读取 SELECT schema 的选项名称，供构建前验证固定枚举。 */
 const readSchemaOptionNames = (value: unknown): Set<string> => {

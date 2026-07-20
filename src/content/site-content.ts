@@ -1,18 +1,23 @@
 import { siteConfig } from "../config/runtime-site-config";
-import type { ContentCategory, ContentEntry } from "../lib/notion";
-import { loadPublishedContent } from "../lib/notion";
+import type {
+  ContentCategory,
+  ContentEntry,
+  JournalEntry,
+  RenderableContentEntry,
+} from "../lib/notion";
+import { loadJournalContent, loadPublishedContent } from "../lib/notion";
 import { validateSiteContent } from "./content-validation";
 import { rewriteInternalLinks } from "./internal-links";
 import { enrichContentLinkPreviews } from "./link-preview";
 import { createCachedLinkPreviewResolver } from "./link-preview-resolver";
-import { TEST_CONTENT } from "./test-content";
+import { TEST_ARTICLES, TEST_JOURNAL_ENTRIES } from "./test-content";
 
 export { getEntryHref } from "./entry-href";
 
 /** 为正式内容补充网页标题和摘要；失败只记录域名并保留原始 mention。 */
-const addExternalLinkPreviews = async (
-  entries: ContentEntry[],
-): Promise<ContentEntry[]> => {
+const addExternalLinkPreviews = async <T extends RenderableContentEntry>(
+  entries: T[],
+): Promise<T[]> => {
   const resolver = createCachedLinkPreviewResolver();
   const failedHosts = new Set<string>();
   try {
@@ -29,10 +34,42 @@ const addExternalLinkPreviews = async (
   }
 };
 
-/** 正式构建读取 Notion；测试构建使用固定夹具，不会访问用户账户。 */
-const loadSiteContent = async (): Promise<ContentEntry[]> => {
+interface SiteContentBundle {
+  articles: ContentEntry[];
+  journals: JournalEntry[];
+}
+
+/** 合并两类条目完成跨数据源内链改写，再按原顺序拆回独立模型。 */
+const prepareSiteContent = async (
+  articles: ContentEntry[],
+  journals: JournalEntry[],
+): Promise<SiteContentBundle> => {
+  const misplacedJournal = articles.find((entry) => entry.category === "journal");
+  if (misplacedJournal) {
+    throw new Error(
+      `文章数据库仍包含已发布流水账「${misplacedJournal.title}」；请迁移到独立流水账数据库`,
+    );
+  }
+
+  const articleCount = articles.length;
+  const combined = validateSiteContent(
+    rewriteInternalLinks<ContentEntry | JournalEntry>([...articles, ...journals]),
+  );
+  const enriched = siteConfig.features.linkPreviews
+    ? await addExternalLinkPreviews(combined)
+    : combined;
+  return {
+    articles: enriched.slice(0, articleCount) as ContentEntry[],
+    journals: enriched.slice(articleCount) as JournalEntry[],
+  };
+};
+
+/** 正式构建并行读取两个 Notion 数据源；测试构建使用固定夹具。 */
+const loadSiteContentBundle = async (): Promise<SiteContentBundle> => {
   const source = import.meta.env.CONTENT_SOURCE ?? "notion";
-  if (source === "fixture") return validateSiteContent(rewriteInternalLinks(TEST_CONTENT));
+  if (source === "fixture") {
+    return prepareSiteContent(TEST_ARTICLES, TEST_JOURNAL_ENTRIES);
+  }
   if (source !== "notion") throw new Error(`未知的 CONTENT_SOURCE：${source}`);
 
   const token = import.meta.env.NOTION_TOKEN?.trim();
@@ -43,24 +80,40 @@ const loadSiteContent = async (): Promise<ContentEntry[]> => {
   if (!dataSourceId) {
     throw new Error("缺少 NOTION_DATA_SOURCE_ID：请在本机 .env 中填写自己的 Notion 数据源 ID");
   }
+  const journalDataSourceId = import.meta.env.NOTION_JOURNAL_DATA_SOURCE_ID?.trim();
+  if (!journalDataSourceId) {
+    throw new Error(
+      "缺少 NOTION_JOURNAL_DATA_SOURCE_ID：请填写独立流水账数据库的数据源 ID",
+    );
+  }
 
-  const entries = validateSiteContent(
-    rewriteInternalLinks(await loadPublishedContent({
+  const [articles, journals] = await Promise.all([
+    loadPublishedContent({
       token,
       dataSourceId,
       media: { localizeExternalImages: true },
-    })),
-  );
-  return siteConfig.features.linkPreviews ? addExternalLinkPreviews(entries) : entries;
+    }),
+    loadJournalContent({
+      token,
+      dataSourceId: journalDataSourceId,
+      media: { localizeExternalImages: true },
+      timeZone: siteConfig.timeZone,
+    }),
+  ]);
+  return prepareSiteContent(articles, journals);
 };
 
-let contentCache: Promise<ContentEntry[]> | null = null;
+let contentCache: Promise<SiteContentBundle> | null = null;
 
-/** 同一次 Astro 构建只读取一次 Notion，所有静态页面共享同一份内容。 */
-export const getSiteContent = (): Promise<ContentEntry[]> => {
-  contentCache ??= loadSiteContent();
+/** 同一次 Astro 构建只读取一次两类 Notion 内容，所有静态页面共享结果。 */
+const getSiteContentBundle = (): Promise<SiteContentBundle> => {
+  contentCache ??= loadSiteContentBundle();
   return contentCache;
 };
+
+/** 文章页面继续只消费文章数据库，避免流水账字段进入目录组件。 */
+export const getSiteContent = async (): Promise<ContentEntry[]> =>
+  (await getSiteContentBundle()).articles;
 
 /** 按分类获取稳定排序后的文章。 */
 export const getCategoryEntries = async (
@@ -68,10 +121,5 @@ export const getCategoryEntries = async (
 ): Promise<ContentEntry[]> => (await getSiteContent()).filter((entry) => entry.category === category);
 
 /** 流水账严格按发布时间倒序展示，不受文章目录的人工排序影响。 */
-export const getJournalEntries = async (): Promise<ContentEntry[]> =>
-  (await getCategoryEntries("journal")).toSorted((left, right) => {
-    const leftTime = Date.parse(left.publishedAt ?? left.createdAt);
-    const rightTime = Date.parse(right.publishedAt ?? right.createdAt);
-    if (leftTime !== rightTime) return rightTime - leftTime;
-    return left.id.localeCompare(right.id);
-  });
+export const getJournalEntries = async (): Promise<JournalEntry[]> =>
+  (await getSiteContentBundle()).journals;

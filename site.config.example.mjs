@@ -6,6 +6,7 @@ import { defineSiteConfig } from "./src/config/define-site-config.mjs";
  */
 export const siteConfig = defineSiteConfig({
   locale: "zh-CN",
+  timeZone: "Asia/Shanghai",
   origin: "https://portfolio.example.com",
   brand: {
     name: "Alice",

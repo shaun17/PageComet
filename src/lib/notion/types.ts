@@ -101,12 +101,20 @@ export interface ContentBlock {
   unsupportedType?: string;
 }
 
-/** Astro 页面消费的完整文章对象。 */
-export interface ContentEntry {
+/** 所有可展示内容共享的最小结构，供媒体、链接和安全校验复用。 */
+export interface RenderableContentEntry {
   id: string;
   title: string;
-  slug: string;
   category: ContentCategory;
+  notionUrl: string;
+  route: string;
+  cover: ContentImage | null;
+  blocks: ContentBlock[];
+}
+
+/** Astro 页面消费的完整文章对象。 */
+export interface ContentEntry extends RenderableContentEntry {
+  slug: string;
   status: "published";
   summary: string;
   publishedAt: string | null;
@@ -117,10 +125,14 @@ export interface ContentEntry {
   tags: string[];
   externalUrl: string | null;
   repositoryUrl: string | null;
-  notionUrl: string;
-  route: string;
-  cover: ContentImage | null;
-  blocks: ContentBlock[];
+}
+
+/** 独立流水账数据源转换出的时间流记录，不携带文章目录字段。 */
+export interface JournalEntry extends RenderableContentEntry {
+  category: "journal";
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Notion 数据源字段名集中定义，便于未来安全重命名。 */
@@ -137,6 +149,23 @@ export interface ContentPropertyNames {
   repositoryUrl: string;
   tags: string;
   cover: string;
+}
+
+/** 独立流水账数据源字段名集中定义，Form 和构建管线共享同一契约。 */
+export interface JournalPropertyNames {
+  content: string;
+  additionalContent: string;
+  media: string;
+  embedUrl: string;
+  publishedAt: string;
+  createdAt: string;
+  hidden: string;
+}
+
+/** FILES 属性中的单个附件，保留原文件名以可靠判断媒体类型。 */
+export interface ContentFileAttachment {
+  name: string;
+  media: ContentMedia;
 }
 
 /** 媒体本地化参数；生产构建写入 dist，开发模式写入 public。 */

@@ -24,7 +24,7 @@ after(async () => {
   await vite?.close();
 });
 
-/** 构造包含当前配置分类的最小合法 Notion 数据源。 */
+/** 构造只包含文章分类的最小合法 Notion 数据源。 */
 const createDataSource = () => ({
   object: "data_source",
   id: "empty-data-source",
@@ -34,7 +34,9 @@ const createDataSource = () => ({
     分类: {
       type: "select",
       select: {
-        options: siteConfig.categories.map(({ notionOption: name }) => ({ name })),
+        options: siteConfig.categories
+          .filter(({ key }) => key !== "journal")
+          .map(({ notionOption: name }) => ({ name })),
       },
     },
     状态: {
@@ -211,6 +213,12 @@ test("requires the manuscript option in the Notion category schema", () => {
   assert.throws(
     () => validateContentSchema(source, resolvePropertyNames()),
     /分类.*缺少固定选项：文稿/,
+  );
+});
+
+test("does not require the migrated journal option in the article schema", () => {
+  assert.doesNotThrow(() =>
+    validateContentSchema(createDataSource(), resolvePropertyNames()),
   );
 });
 

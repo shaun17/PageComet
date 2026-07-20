@@ -110,12 +110,4 @@ export const CONTENT_SNAPSHOT: ContentEntry[] = [
     externalUrl: "https://github.com/example/shared-link/",
     repositoryUrl: "https://github.com/example/shared-link/",
   }),
-  createExampleEntry({
-    id: "c1111111-1111-4111-8111-111111111111",
-    title: "一段城市散步",
-    slug: "a-city-walk",
-    category: "journal",
-    summary: "关于周末、街道与慢下来的一段记录。",
-    order: 10,
-  }),
 ];

@@ -15,10 +15,10 @@ import {
 } from "./media-formats";
 import type {
   ContentBlock,
-  ContentEntry,
   ContentImage,
   ContentMedia,
   MediaLocalizationOptions,
+  RenderableContentEntry,
 } from "./types";
 
 const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -212,11 +212,11 @@ const localizeBlocks = async (
 };
 
 /** 使用确定的远端抓取器本地化媒体，生产与离线测试共享完整校验和写入流程。 */
-const localizeContentEntryMediaInternal = async (
-  entry: ContentEntry,
+const localizeContentEntryMediaInternal = async <T extends RenderableContentEntry>(
+  entry: T,
   options: MediaLocalizationOptions,
   remoteFetcher: PublicRemoteFetcher,
-): Promise<ContentEntry> => {
+): Promise<T> => {
   const resolvedOptions: ResolvedMediaLocalizationOptions = {
     outputDirectory: options.outputDirectory ?? resolveDefaultOutputDirectory(),
     publicPath: options.publicPath ?? "/notion-assets",
@@ -245,17 +245,17 @@ const localizeContentEntryMediaInternal = async (
 };
 
 /** 将 ContentEntry 内所有临时媒体通过安全公网连接转存到 Astro 静态资源目录。 */
-export const localizeContentEntryMedia = async (
-  entry: ContentEntry,
+export const localizeContentEntryMedia = async <T extends RenderableContentEntry>(
+  entry: T,
   options: MediaLocalizationOptions = {},
-): Promise<ContentEntry> =>
+): Promise<T> =>
   localizeContentEntryMediaInternal(entry, options, createPublicRemoteFetcher());
 
 /** 仅供离线测试注入固定媒体响应，不会被正式内容构建调用。 */
-export const localizeContentEntryMediaForTest = async (
-  entry: ContentEntry,
+export const localizeContentEntryMediaForTest = async <T extends RenderableContentEntry>(
+  entry: T,
   options: MediaLocalizationTestOptions,
-): Promise<ContentEntry> =>
+): Promise<T> =>
   localizeContentEntryMediaInternal(
     entry,
     options,

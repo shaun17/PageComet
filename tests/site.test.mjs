@@ -260,12 +260,12 @@ test("builds article indexes and the journal feed", async () => {
   assert.doesNotMatch(internalWritingAnchor, /target=/);
 
   assert.match(journal, /<section class="journal-feed" aria-label="流水账时间流">/);
-  assert.equal((journal.match(/class="journal-entry"/g) ?? []).length, 2);
-  assert.ok(journal.indexOf("2026.07.19") < journal.indexOf("2026.01.15"));
-  assert.match(journal, /关于周末、街道与慢下来的一段记录。/);
+  assert.equal((journal.match(/class="journal-entry"/g) ?? []).length, 1);
+  assert.match(journal, /2026\.07\.19/);
+  assert.doesNotMatch(journal, /2026\.01\.15|关于周末、街道与慢下来的一段记录。/);
   assert.doesNotMatch(journal, /一条包含多媒体的长流水账|一段城市散步/);
-  assert.equal((journal.match(/data-journal-text/g) ?? []).length, 2);
-  assert.equal((journal.match(/data-journal-toggle hidden/g) ?? []).length, 2);
+  assert.equal((journal.match(/data-journal-text/g) ?? []).length, 1);
+  assert.equal((journal.match(/data-journal-toggle hidden/g) ?? []).length, 1);
   assert.equal(
     (journal.match(/class="journal-entry-attachments notion-content"/g) ?? []).length,
     1,

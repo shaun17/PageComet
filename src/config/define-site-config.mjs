@@ -26,6 +26,17 @@ const requireBoolean = (value, path) => {
   return value;
 };
 
+/** 校验 IANA 时区名称，避免构建机默认时区改变流水账日期。 */
+const requireTimeZone = (value, path) => {
+  const timeZone = requireText(value, path);
+  try {
+    new Intl.DateTimeFormat("en", { timeZone }).format(0);
+  } catch {
+    throw new TypeError(`站点配置 ${path} 必须是有效的 IANA 时区`);
+  }
+  return timeZone;
+};
+
 /** 校验绝对地址及允许的协议，并返回浏览器规范化后的地址。 */
 const requireUrl = (value, protocols, path) => {
   const text = requireText(value, path);
@@ -69,6 +80,7 @@ export const defineSiteConfig = (config) => {
   }
 
   requireText(config.locale, "locale");
+  requireTimeZone(config.timeZone, "timeZone");
   const origin = requireUrl(config.origin, ["https:"], "origin");
   if (
     origin.username ||

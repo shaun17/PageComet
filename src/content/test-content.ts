@@ -1,6 +1,7 @@
 import type {
   ContentBlock,
   ContentEntry,
+  JournalEntry,
   ContentLinkPreview,
   ContentRichText,
 } from "../lib/notion";
@@ -233,30 +234,24 @@ const createJournalFeedBlocks = (): ContentBlock[] => [
   ),
 ];
 
-const JOURNAL_FEED_ENTRY: ContentEntry = {
+const JOURNAL_FEED_ENTRY: JournalEntry = {
   id: JOURNAL_FEED_ID,
   title: "一条包含多媒体的长流水账",
-  slug: "multimedia-journal",
   category: "journal",
-  status: "published",
-  summary: "用于验证流水账长文本折叠与多媒体素材展示。",
   publishedAt: "2026-07-19",
   createdAt: "2026-07-19T08:00:00.000Z",
   updatedAt: "2026-07-19T09:00:00.000Z",
-  order: 5,
-  featured: false,
-  tags: ["日常"],
-  externalUrl: null,
-  repositoryUrl: null,
   notionUrl: JOURNAL_FEED_NOTION_URL,
-  route: "/journal/multimedia-journal",
+  route: "/journal",
   cover: null,
   blocks: createJournalFeedBlocks(),
 };
 
-/** 仅在 CONTENT_SOURCE=fixture 时使用，绝不会被正式发布脚本读取。 */
-export const TEST_CONTENT: ContentEntry[] = [
+/** 仅在 CONTENT_SOURCE=fixture 时使用的文章夹具。 */
+export const TEST_ARTICLES: ContentEntry[] = [
   ...CONTENT_SNAPSHOT,
   INTERNAL_ARTICLE,
-  JOURNAL_FEED_ENTRY,
 ];
+
+/** 仅在 CONTENT_SOURCE=fixture 时使用的独立流水账夹具。 */
+export const TEST_JOURNAL_ENTRIES: JournalEntry[] = [JOURNAL_FEED_ENTRY];

@@ -1,5 +1,5 @@
 ---
-import type { ContentEntry } from "../lib/notion";
+import type { JournalEntry } from "../lib/notion";
 import type { CategoryDefinition } from "../content/categories";
 import SiteLayout from "../layouts/SiteLayout.astro";
 import JournalFeed from "./JournalFeed.astro";
@@ -7,7 +7,7 @@ import PageFooter from "./PageFooter.astro";
 
 interface Props {
   category: CategoryDefinition;
-  entries: ContentEntry[];
+  entries: JournalEntry[];
 }
 
 const { category, entries } = Astro.props;

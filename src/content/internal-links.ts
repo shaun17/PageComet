@@ -1,5 +1,5 @@
 import { siteConfig } from "../config/runtime-site-config";
-import type { ContentBlock, ContentEntry } from "../lib/notion";
+import type { ContentBlock, RenderableContentEntry } from "../lib/notion";
 import { getEntryHref } from "./entry-href";
 
 /** 把有无连字符的 Notion 页面 ID 统一成 32 位小写字符串。 */
@@ -16,7 +16,7 @@ const readNotionPageId = (value: string | null): string | null => {
 };
 
 /** 将数据库页面之间的 Notion 地址及可选旧页面别名改写为站内静态地址。 */
-export const rewriteInternalLinks = (entries: ContentEntry[]): ContentEntry[] => {
+export const rewriteInternalLinks = <T extends RenderableContentEntry>(entries: T[]): T[] => {
   const routesByPageId = new Map(
     entries.map((entry) => [normalizePageId(entry.id), getEntryHref(entry)]),
   );

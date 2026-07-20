@@ -14,11 +14,13 @@ test("keeps committed configuration generic and local configuration ignored", as
   ]);
 
   assert.equal(siteConfig.origin, "https://portfolio.example.com");
+  assert.equal(siteConfig.timeZone, "Asia/Shanghai");
   assert.deepEqual(siteConfig.content.legacyPageAliases, {});
   assert.match(gitignore, /^site\.config\.mjs$/m);
   for (const name of [
     "NOTION_TOKEN",
     "NOTION_DATA_SOURCE_ID",
+    "NOTION_JOURNAL_DATA_SOURCE_ID",
     "CLOUDFLARE_PAGES_PROJECT",
     "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID",
@@ -55,6 +57,15 @@ test("rejects an unsafe origin and an unknown headline category", () => {
   assert.throws(
     () => defineSiteConfig(unknownCategory),
     /home\.headline\.categoryKey 必须对应现有分类/,
+  );
+});
+
+test("rejects an invalid journal time zone", () => {
+  const invalidTimeZone = createConfig();
+  invalidTimeZone.timeZone = "Shanghai";
+  assert.throws(
+    () => defineSiteConfig(invalidTimeZone),
+    /timeZone 必须是有效的 IANA 时区/,
   );
 });
 

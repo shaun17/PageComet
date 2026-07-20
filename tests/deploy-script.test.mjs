@@ -12,6 +12,7 @@ import {
 const validEnvironment = {
   NOTION_TOKEN: "ntn_abcdefghijklmnopqrstuvwxyz0123456789",
   NOTION_DATA_SOURCE_ID: "11111111-2222-4333-8444-555555555555",
+  NOTION_JOURNAL_DATA_SOURCE_ID: "66666666-7777-4888-8999-aaaaaaaaaaaa",
   CLOUDFLARE_PAGES_PROJECT: "alice-portfolio",
 };
 
@@ -28,6 +29,7 @@ test("validates deployment identifiers before running child processes", () => {
   assert.deepEqual(validateDeploymentEnvironment(validEnvironment), {
     notionToken: validEnvironment.NOTION_TOKEN,
     notionDataSourceId: validEnvironment.NOTION_DATA_SOURCE_ID,
+    notionJournalDataSourceId: validEnvironment.NOTION_JOURNAL_DATA_SOURCE_ID,
     pagesProject: validEnvironment.CLOUDFLARE_PAGES_PROJECT,
   });
   assert.throws(
@@ -75,6 +77,7 @@ test("isolates credentials for every deployment stage", () => {
       PATH: "/usr/bin",
       NOTION_TOKEN: validEnvironment.NOTION_TOKEN,
       NOTION_DATA_SOURCE_ID: validEnvironment.NOTION_DATA_SOURCE_ID,
+      NOTION_JOURNAL_DATA_SOURCE_ID: validEnvironment.NOTION_JOURNAL_DATA_SOURCE_ID,
       ALLOW_EMPTY_SITE: "true",
     },
   );
@@ -95,6 +98,7 @@ test("isolates credentials for every deployment stage", () => {
   assert.deepEqual(createDeploymentScanValues(environment, deployment), {
     NOTION_TOKEN: validEnvironment.NOTION_TOKEN,
     NOTION_DATA_SOURCE_ID: validEnvironment.NOTION_DATA_SOURCE_ID,
+    NOTION_JOURNAL_DATA_SOURCE_ID: validEnvironment.NOTION_JOURNAL_DATA_SOURCE_ID,
     CLOUDFLARE_API_TOKEN: "cloudflare-token",
     CLOUDFLARE_ACCOUNT_ID: "cloudflare-account",
   });

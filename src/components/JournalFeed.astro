@@ -1,23 +1,18 @@
 ---
-import type { ContentBlock, ContentEntry } from "../lib/notion";
+import type { ContentBlock, JournalEntry } from "../lib/notion";
 import { partitionJournalContent } from "../content/journal-content";
+import { formatJournalTimestamp } from "../lib/journal-time";
+import { siteConfig } from "../config/runtime-site-config";
 import NotionBlocks from "./NotionBlocks.astro";
 
 interface Props {
-  entries: ContentEntry[];
+  entries: JournalEntry[];
 }
 
 const { entries } = Astro.props;
 
-/** ISO 日期保持原始日历值；只有数据本身包含时间时才展示小时和分钟。 */
-const formatTimestamp = (value: string): string => {
-  const [date = value, time] = value.split("T", 2);
-  const formattedDate = date.slice(0, 10).replaceAll("-", ".");
-  return time ? `${formattedDate} ${time.slice(0, 5)}` : formattedDate;
-};
-
 /** 将可选封面转换成普通图片附件，让旧内容迁移到时间流后不会丢图。 */
-const createCoverBlock = (entry: ContentEntry): ContentBlock | null =>
+const createCoverBlock = (entry: JournalEntry): ContentBlock | null =>
   entry.cover
     ? {
         id: `${entry.id}-cover`,
@@ -37,7 +32,11 @@ const feedItems = entries.map((entry) => {
     textBlocks,
     attachmentBlocks: cover ? [cover, ...attachmentBlocks] : attachmentBlocks,
     timestamp,
-    formattedTimestamp: formatTimestamp(timestamp),
+    formattedTimestamp: formatJournalTimestamp(
+      timestamp,
+      siteConfig.locale,
+      siteConfig.timeZone,
+    ),
     timeId: `journal-time-${safeId}`,
     textId: `journal-text-${safeId}`,
   };

@@ -1,5 +1,10 @@
 import type { NotionPageResponse, NotionPropertyValue } from "./api-types";
-import type { ContentImage, ContentMedia, ContentRichText } from "./types";
+import type {
+  ContentFileAttachment,
+  ContentImage,
+  ContentMedia,
+  ContentRichText,
+} from "./types";
 
 /** 将未知 JSON 值安全收窄为普通对象。 */
 export const asRecord = (value: unknown): Record<string, unknown> | null => {
@@ -76,9 +81,19 @@ export const getPageProperty = (
 export const readTitleProperty = (property: NotionPropertyValue): string =>
   richTextToPlainText(readRichText(property.title)).trim();
 
+/** 读取 TITLE 属性的完整富文本，流水账可保留行内链接和样式。 */
+export const readTitleRichTextProperty = (
+  property: NotionPropertyValue,
+): ContentRichText[] => readRichText(property.title);
+
 /** 读取 RICH_TEXT 属性。 */
 export const readRichTextProperty = (property: NotionPropertyValue): string =>
   richTextToPlainText(readRichText(property.rich_text)).trim();
+
+/** 读取 RICH_TEXT 属性的完整富文本，避免 Form 内容退化为纯文本。 */
+export const readRichTextPropertyItems = (
+  property: NotionPropertyValue,
+): ContentRichText[] => readRichText(property.rich_text);
 
 /** 读取 SELECT 或 STATUS 属性的选项名称。 */
 export const readSelectProperty = (property: NotionPropertyValue): string | null => {
@@ -159,4 +174,21 @@ export const readFilesProperty = (
   if (!Array.isArray(property.files)) return null;
   const first = property.files[0];
   return first ? readFileImage(first, alt) : null;
+};
+
+/** 读取 FILES 属性中的全部附件；任何损坏项都明确失败，避免发布时静默丢素材。 */
+export const readFileAttachmentsProperty = (
+  property: NotionPropertyValue,
+): ContentFileAttachment[] => {
+  if (!Array.isArray(property.files)) return [];
+  return property.files.map((value, index) => {
+    const file = asRecord(value);
+    const media = readFileMedia(value);
+    if (!file || !media) {
+      throw new Error(`Notion 文件属性中的第 ${index + 1} 个附件无法读取`);
+    }
+    const name = typeof file.name === "string" ? file.name.trim() : "";
+    if (!name) throw new Error(`Notion 文件属性中的第 ${index + 1} 个附件缺少文件名`);
+    return { name, media };
+  });
 };

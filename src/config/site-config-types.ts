@@ -19,6 +19,7 @@ export interface SiteCategory {
 
 export interface SiteConfig {
   locale: string;
+  timeZone: string;
   origin: string;
   brand: {
     name: string;

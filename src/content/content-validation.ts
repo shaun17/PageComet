@@ -1,4 +1,4 @@
-import type { ContentBlock, ContentEntry } from "../lib/notion";
+import type { ContentBlock, RenderableContentEntry } from "../lib/notion";
 
 const RENDERABLE_BLOCKS = new Set<ContentBlock["type"]>([
   "paragraph",
@@ -73,7 +73,7 @@ const assertRenderableBlocks = (blocks: ContentBlock[], articleTitle: string): v
 };
 
 /** 校验正式内容和测试夹具都满足页面层的静态输出要求。 */
-export const validateSiteContent = (entries: ContentEntry[]): ContentEntry[] => {
+export const validateSiteContent = <T extends RenderableContentEntry>(entries: T[]): T[] => {
   for (const entry of entries) assertRenderableBlocks(entry.blocks, entry.title);
   return entries;
 };

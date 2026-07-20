@@ -7,6 +7,14 @@ export {
   loadPublishedContent,
 } from "./content";
 export {
+  createVisibleJournalQuery,
+  DEFAULT_JOURNAL_PROPERTIES,
+  loadJournalContent,
+  normalizeJournalPage,
+  resolveJournalPropertyNames,
+  validateJournalSchema,
+} from "./journal";
+export {
   createPublishedContentQuery,
   DEFAULT_CONTENT_PROPERTIES,
   normalizeContentPage,
@@ -18,11 +26,16 @@ export type {
   ContentBlockType,
   ContentCategory,
   ContentEntry,
+  ContentFileAttachment,
   ContentImage,
   ContentLinkPreview,
   ContentMedia,
   ContentPropertyNames,
   ContentRichText,
+  JournalEntry,
+  JournalPropertyNames,
   MediaLocalizationOptions,
+  RenderableContentEntry,
 } from "./types";
 export type { LoadPublishedContentOptions } from "./content";
+export type { LoadJournalContentOptions } from "./journal";

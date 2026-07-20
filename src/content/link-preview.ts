@@ -1,8 +1,8 @@
 import type {
   ContentBlock,
-  ContentEntry,
   ContentLinkPreview,
   ContentRichText,
+  RenderableContentEntry,
 } from "../lib/notion";
 import { isSiteHostname } from "../config/site-origin";
 
@@ -109,11 +109,11 @@ const resolvePreviews = async (
 };
 
 /** 全站一次性解析外链摘要；任一链接失败只降级该链接，不中断静态构建。 */
-export const enrichContentLinkPreviews = async (
-  entries: ContentEntry[],
+export const enrichContentLinkPreviews = async <T extends RenderableContentEntry>(
+  entries: T[],
   resolvePreview: LinkPreviewResolver,
   options: LinkPreviewEnrichmentOptions = {},
-): Promise<ContentEntry[]> => {
+): Promise<T[]> => {
   const urls = new Set<string>();
   for (const entry of entries) collectBlockUrls(entry.blocks, urls);
   if (urls.size === 0) return entries;
