@@ -36,6 +36,7 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
         </p>
         <h1>{entry.title}</h1>
         {entry.summary && <p class="article-summary">{entry.summary}</p>}
+        <hr class="article-divider" />
         <ProjectLinks
           projectUrl={entry.externalUrl}
           repositoryUrl={entry.repositoryUrl}
@@ -53,6 +54,7 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
       </div>
 
       <nav class="article-return" aria-label="返回分类">
+        <span class="article-end-marker" aria-hidden="true">END</span>
         <a href={category.path}>← 返回{category.label}</a>
       </nav>
     </article>

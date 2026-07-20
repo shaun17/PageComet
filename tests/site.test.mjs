@@ -166,6 +166,18 @@ test("builds category indexes and an internal article", async () => {
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
   assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
   assert.match(exampleJournal, /<h1>一段城市散步<\/h1>/);
+  for (const html of [exampleCareer, exampleWork, exampleJournal, article]) {
+    assert.equal(
+      (html.match(/class="article-divider"/g) ?? []).length,
+      1,
+      "每种文章详情页都应具有同一个标题区分隔线",
+    );
+    assert.equal(
+      (html.match(/class="article-end-marker"/g) ?? []).length,
+      1,
+      "每种文章详情页都应具有明确的 END 收尾标记",
+    );
+  }
 
   const projectAnchor = findAnchor(exampleWork, "https://atlas-notes.example.com/");
   const repositoryAnchor = findAnchor(
@@ -173,6 +185,11 @@ test("builds category indexes and an internal article", async () => {
     "https://github.com/example/atlas-notes/",
   );
   assert.match(exampleWork, /<nav class="project-links" aria-label="项目链接">/);
+  assert.doesNotMatch(exampleWork, /project-links-label/);
+  assert.ok(
+    exampleWork.indexOf('class="article-divider"') <
+      exampleWork.indexOf('class="project-links"'),
+  );
   for (const anchor of [projectAnchor, repositoryAnchor]) {
     assert.ok(anchor);
     assert.match(anchor, /class="animated-underline"/);
@@ -217,6 +234,10 @@ test("builds category indexes and an internal article", async () => {
   assert.match(bookmarkAnchor, /class="notion-mention notion-mention-external"/);
   assert.match(article, /<pre><code data-language="shell">/);
   assert.match(article, /<details><summary>/);
+  assert.match(
+    article,
+    /<div class="notion-divider" role="separator"><span aria-hidden="true">·—·<\/span><\/div>/,
+  );
   assert.match(
     article,
     /<img src="\/notion-assets\/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6\.gif" alt="动态操作演示" loading="lazy" decoding="async" data-notion-image-unmeasured>/,
@@ -352,11 +373,66 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(animatedUnderlineHoverRule);
   assert.match(animatedUnderlineHoverRule, /transform:scaleX\(0\)/);
   assert.match(animatedUnderlineHoverRule, /transform-origin:100%/);
+  const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
+  assert.ok(articleShellRule);
+  assert.match(articleShellRule, /--article-content-width:46rem/);
   const projectLinksRule = css.match(/\.project-links\{([^}]*)\}/)?.[1];
   assert.ok(projectLinksRule);
   assert.match(projectLinksRule, /display:flex/);
+  assert.match(projectLinksRule, /max-width:var\(--article-content-width\)/);
+  assert.match(projectLinksRule, /margin-top:1rem/);
+  assert.doesNotMatch(projectLinksRule, /border/);
   assert.match(projectLinksRule, /flex-wrap:wrap/);
-  assert.match(projectLinksRule, /gap:\.5rem 1\.25rem/);
+  const articleDividerRule = css.match(/\.article-divider\{([^}]*)\}/)?.[1];
+  assert.ok(articleDividerRule);
+  assert.match(articleDividerRule, /max-width:var\(--article-content-width\)/);
+  assert.match(articleDividerRule, /border-top:1px solid var\(--line\)/);
+  const articleReturnRule = css.match(/\.article-return\{([^}]*)\}/)?.[1];
+  assert.ok(articleReturnRule);
+  assert.doesNotMatch(articleReturnRule, /border/);
+  assert.match(articleReturnRule, /margin-top:clamp\(2\.5rem,4vw,3rem\)/);
+  const articleEndMarkerRule = css.match(/\.article-end-marker\{([^}]*)\}/)?.[1];
+  assert.ok(articleEndMarkerRule);
+  assert.match(articleEndMarkerRule, /display:flex/);
+  assert.match(articleEndMarkerRule, /width:fit-content/);
+  assert.match(articleEndMarkerRule, /font-size:\.65rem/);
+  assert.match(articleEndMarkerRule, /margin-bottom:\.875rem/);
+  const articleEndMarkerLineRule = css.match(
+    /\.article-end-marker:after\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(articleEndMarkerLineRule);
+  assert.match(articleEndMarkerLineRule, /width:8rem/);
+  assert.match(articleEndMarkerLineRule, /height:1px/);
+  assert.match(articleEndMarkerLineRule, /background:var\(--line-strong\)/);
+  const projectLinkAnchorRule = css.match(/\.project-links a\{([^}]*)\}/)?.[1];
+  assert.ok(projectLinkAnchorRule);
+  assert.match(projectLinkAnchorRule, /font-family:var\(--font-sans\)/);
+  assert.match(projectLinkAnchorRule, /font-size:1rem/);
+  const notionDividerRule = css.match(
+    /\.notion-content \.notion-divider\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(notionDividerRule);
+  assert.match(notionDividerRule, /margin:1\.25rem 0/);
+  assert.match(notionDividerRule, /font-family:var\(--font-mono\)/);
+  assert.match(notionDividerRule, /text-align:center/);
+  assert.doesNotMatch(css, /\.notion-content hr\{/);
+  assert.match(css, /margin:0 0 1\.05em/);
+  const articleFooterRule = css.match(
+    /\.article-shell \.page-footer\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(articleFooterRule);
+  assert.match(articleFooterRule, /margin-top:clamp\(3rem,5vw,4rem\)/);
+  const articleCoverRule = css.match(/\.article-cover\{([^}]*)\}/)?.[1];
+  assert.ok(articleCoverRule);
+  assert.match(articleCoverRule, /max-width:var\(--article-content-width\)/);
+  const notionContentRule = css.match(/\.notion-content\{([^}]*)\}/)?.[1];
+  assert.ok(notionContentRule);
+  assert.match(notionContentRule, /max-width:var\(--article-content-width\)/);
+  const articleMediaRule = css.match(
+    /\.notion-image,\.notion-media\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(articleMediaRule);
+  assert.match(articleMediaRule, /width:100%/);
   assert.match(css, /--surface-subtle:/);
   const mentionRule = css.match(/\.notion-content \.notion-mention\{([^}]*)\}/)?.[1];
   assert.ok(mentionRule);

@@ -162,7 +162,11 @@ const groups = groupBlocks(blocks);
           </p>
         )}
         {item.type === "equation" && <p class="notion-equation">{item.expression}</p>}
-        {item.type === "divider" && <hr />}
+        {item.type === "divider" && (
+          <div class="notion-divider" role="separator">
+            <span aria-hidden="true">·—·</span>
+          </div>
+        )}
         {item.type === "table" && (
           <div class="notion-table-wrap">
             <table>

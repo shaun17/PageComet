@@ -14,7 +14,7 @@
 .notion-content .notion-image,
 .notion-content .notion-media,
 .notion-content .notion-table-wrap {
-  margin: 0 0 1.55em;
+  margin: 0 0 1.05em;
 }
 
 .notion-content h2 {
@@ -303,10 +303,15 @@
   color: var(--text-muted);
 }
 
-.notion-content hr {
-  margin: 3rem 0;
-  border: 0;
-  border-top: 1px solid var(--line);
+/* 章节停顿使用文字标记，不再复用任何结构横线；收紧间距避免远离相邻图片。 */
+.notion-content .notion-divider {
+  margin: 1.25rem 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-align: center;
 }
 
 .notion-content summary {
@@ -379,7 +384,7 @@
 
 .notion-image,
 .notion-media {
-  width: min(56rem, calc(100vw - 2 * var(--page-gutter)));
+  width: 100%;
 }
 
 .notion-image img {

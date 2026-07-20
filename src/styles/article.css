@@ -1,3 +1,8 @@
+/* 阅读栏保持左侧锚点，只适度放宽以减少大屏右侧留白。 */
+.article-shell {
+  --article-content-width: 46rem;
+}
+
 .article-shell article {
   animation: content-reveal 420ms ease-out both;
 }
@@ -42,16 +47,22 @@
   text-wrap: pretty;
 }
 
-/* 项目入口保持为文章元信息，不使用高视觉权重的按钮或卡片。 */
+/* 标题区用横跨正文栏的浅细线，表达正文从这里开始。 */
+.article-divider {
+  max-width: var(--article-content-width);
+  margin: clamp(2rem, 4vw, 2.75rem) 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+/* 项目入口只负责链接布局，分隔结构由文章页统一提供。 */
 .project-links {
   display: flex;
-  margin-top: 1.5rem;
+  max-width: var(--article-content-width);
+  margin-top: 1rem;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  gap: 0.65rem 2rem;
 }
 
 .project-links a {
@@ -61,11 +72,21 @@
   display: inline-flex;
   align-items: baseline;
   gap: 0.3em;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
+.project-link-arrow {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+}
+
 .article-cover {
-  max-width: 56rem;
+  max-width: var(--article-content-width);
   margin: clamp(3rem, 6vw, 5rem) 0 0;
 }
 
@@ -76,7 +97,7 @@
 }
 
 .notion-content {
-  max-width: 42rem;
+  max-width: var(--article-content-width);
   margin-top: clamp(3rem, 6vw, 5rem);
 }
 
@@ -85,12 +106,35 @@
 }
 
 .article-return {
-  max-width: 42rem;
-  margin-top: clamp(4rem, 8vw, 7rem);
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--text-primary);
+  max-width: var(--article-content-width);
+  margin-top: clamp(2.5rem, 4vw, 3rem);
   font-family: var(--font-mono);
   font-size: 0.75rem;
+}
+
+/* END 与较长横线形成明确落款，长度足以和正文中的短章节标记区分。 */
+.article-end-marker {
+  display: flex;
+  width: fit-content;
+  margin-bottom: 0.875rem;
+  align-items: center;
+  gap: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+.article-end-marker::after {
+  width: 8rem;
+  height: 1px;
+  background: var(--line-strong);
+  content: "";
+}
+
+/* 文章页收尾使用更紧凑的页脚间距，目录页继续保留原有的大留白。 */
+.article-shell .page-footer {
+  margin-top: clamp(3rem, 5vw, 4rem);
 }
 
 @media (max-width: 600px) {
@@ -104,5 +148,9 @@
 
   .article-summary {
     font-size: 0.95rem;
+  }
+
+  .project-links {
+    gap: 0.65rem 1.5rem;
   }
 }
