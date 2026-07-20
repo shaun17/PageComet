@@ -5,7 +5,7 @@
 
 /* 返回导航与文章主体只保留必要的分组距离，避免标题区出现无内容的大块内边距。 */
 .article-shell article {
-  margin-top: clamp(2.25rem, 3.5vw, 3rem);
+  margin-top: var(--page-content-start-gap);
   animation: content-reveal 420ms ease-out both;
 }
 

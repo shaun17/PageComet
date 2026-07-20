@@ -373,15 +373,26 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(animatedUnderlineHoverRule);
   assert.match(animatedUnderlineHoverRule, /transform:scaleX\(0\)/);
   assert.match(animatedUnderlineHoverRule, /transform-origin:100%/);
+  const contentShellRule = css.match(/\.content-shell\{([^}]*)\}/)?.[1];
+  assert.ok(contentShellRule);
+  assert.match(
+    contentShellRule,
+    /--page-content-start-gap:clamp\(2\.25rem,\s*3\.5vw,\s*3rem\)/,
+  );
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:46rem/);
   const articleBodyRule = css.match(/\.article-shell article\{([^}]*)\}/)?.[1];
   assert.ok(articleBodyRule);
-  assert.match(articleBodyRule, /margin-top:clamp\(2\.25rem,3\.5vw,3rem\)/);
+  assert.match(articleBodyRule, /margin-top:var\(--page-content-start-gap\)/);
   const articleHeaderRule = css.match(/\.article-header\{([^}]*)\}/)?.[1];
   assert.ok(articleHeaderRule);
   assert.doesNotMatch(articleHeaderRule, /padding-top/);
+  const categoryHeaderRule = css.match(/\.category-header\{([^}]*)\}/)?.[1];
+  assert.ok(categoryHeaderRule);
+  assert.match(categoryHeaderRule, /margin-top:var\(--page-content-start-gap\)/);
+  assert.match(categoryHeaderRule, /padding-bottom:clamp\(2\.75rem,5vw,4rem\)/);
+  assert.doesNotMatch(categoryHeaderRule, /padding-top|(?:^|;)padding:/);
   const projectLinksRule = css.match(/\.project-links\{([^}]*)\}/)?.[1];
   assert.ok(projectLinksRule);
   assert.match(projectLinksRule, /display:flex/);

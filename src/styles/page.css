@@ -1,4 +1,6 @@
+/* 页面返回导航到主内容统一使用同一间距，避免目录页与文章页再次分叉。 */
 .content-shell {
+  --page-content-start-gap: clamp(2.25rem, 3.5vw, 3rem);
   width: 100%;
   max-width: 100rem;
   min-height: 100svh;
@@ -20,8 +22,10 @@
   transition: color 160ms ease;
 }
 
+/* 返回首页与目录主体使用正常分组间距，避免目录页顶部形成无内容的大块内边距。 */
 .category-header {
-  padding: clamp(4.5rem, 8vw, 7rem) 0 clamp(2.75rem, 5vw, 4rem);
+  margin-top: var(--page-content-start-gap);
+  padding-bottom: clamp(2.75rem, 5vw, 4rem);
   animation: content-reveal 420ms ease-out both;
 }
 
@@ -83,10 +87,6 @@
 @media (max-width: 600px) {
   .page-navigation {
     padding-top: 1.25rem;
-  }
-
-  .category-header {
-    padding: 3.75rem 0 2.75rem;
   }
 
   .category-header h1,
