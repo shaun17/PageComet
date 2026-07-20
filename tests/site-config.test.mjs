@@ -34,6 +34,15 @@ test("accepts and deeply freezes a valid site configuration", () => {
   assert.ok(Object.isFrozen(config.home.headline));
   assert.ok(Object.isFrozen(config.categories));
   assert.ok(Object.isFrozen(config.content.legacyPageAliases));
+  assert.deepEqual(
+    config.categories.map(({ key, index }) => ({ key, index })),
+    [
+      { key: "career", index: "01" },
+      { key: "works", index: "02" },
+      { key: "writing", index: "03" },
+      { key: "journal", index: "04" },
+    ],
+  );
 });
 
 test("rejects an unsafe origin and an unknown headline category", () => {
@@ -61,6 +70,19 @@ test("rejects duplicate categories, unsafe contacts, and malformed aliases", () 
   const malformedAlias = createConfig();
   malformedAlias.content.legacyPageAliases = { invalid: "also-invalid" };
   assert.throws(() => defineSiteConfig(malformedAlias), /必须是有效的 Notion 页面 ID/);
+});
+
+test("requires the complete four-category contract", () => {
+  const missingCategory = createConfig();
+  missingCategory.categories.pop();
+  assert.throws(
+    () => defineSiteConfig(missingCategory),
+    /categories 必须完整包含：career、works、writing、journal/,
+  );
+
+  const unknownCategory = createConfig();
+  unknownCategory.categories[2].key = "notes";
+  assert.throws(() => defineSiteConfig(unknownCategory), /key 必须是不重复的/);
 });
 
 test("requires an explicit link-preview boolean", () => {

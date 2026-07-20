@@ -1,0 +1,22 @@
+---
+import type { ContentEntry } from "../../lib/notion";
+import ArticlePage from "../../components/ArticlePage.astro";
+import { getSiteContent } from "../../content/site-content";
+
+/** 按内容条目的分类与 Slug 生成全部静态详情页。 */
+export async function getStaticPaths() {
+  const entries = await getSiteContent();
+  return entries.map((entry) => ({
+    params: { category: entry.category, slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+interface Props {
+  entry: ContentEntry;
+}
+
+const { entry } = Astro.props;
+---
+
+<ArticlePage entry={entry} />

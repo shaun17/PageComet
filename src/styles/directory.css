@@ -1,6 +1,6 @@
 .directory {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-block: 1px solid var(--line-strong);
 }
 
@@ -109,7 +109,27 @@
   transform: translateX(0.22em);
 }
 
-/* 窄屏沿用参考页的单列顺序，避免把三组链接压缩成窄列。 */
+/* 中等宽度改为两列，避免四个目录在平板竖屏下挤压标题与链接。 */
+@media (min-width: 761px) and (max-width: 960px) {
+  .directory {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .directory-column:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .directory-column:nth-child(even) {
+    padding-inline-end: 0;
+  }
+
+  .directory-column:nth-child(n + 3) {
+    border-block-start: 1px solid var(--line);
+  }
+}
+
+/* 窄屏沿用参考页的单列顺序，避免把多组链接压缩成窄列。 */
 @media (max-width: 760px) {
   .directory {
     display: block;

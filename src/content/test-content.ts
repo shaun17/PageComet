@@ -68,7 +68,7 @@ const INTERNAL_ARTICLE: ContentEntry = {
   id: "11111111-2222-3333-4444-555555555555",
   title: "用 Notion 写一篇文章",
   slug: "writing-with-notion",
-  category: "journal",
+  category: "writing",
   status: "published",
   summary: "这篇构建夹具验证 Notion 正文会生成完整的站内静态页面。",
   publishedAt: "2026-07-18",
@@ -80,7 +80,7 @@ const INTERNAL_ARTICLE: ContentEntry = {
   externalUrl: null,
   repositoryUrl: null,
   notionUrl: "https://www.notion.so/11111111222233334444555555555555",
-  route: "/journal/writing-with-notion",
+  route: "/writing/writing-with-notion",
   cover: null,
   blocks: [
     block("intro", "paragraph", [

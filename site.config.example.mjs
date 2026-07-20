@@ -12,7 +12,7 @@ export const siteConfig = defineSiteConfig({
     browserTitle: "ALICE",
     socialTitle: "Alice — 设计师与独立开发者",
     kicker: "ALICE / DESIGNER & DEVELOPER",
-    description: "Alice 的个人网站，收录职业经历、个人作品与日常记录。",
+    description: "Alice 的个人网站，收录职业经历、个人作品、文章与日常记录。",
   },
   home: {
     headline: {
@@ -60,9 +60,17 @@ export const siteConfig = defineSiteConfig({
       description: "从一个想法开始，持续把它做成可以使用的产品。",
     },
     {
+      key: "writing",
+      notionOption: "文稿",
+      index: "03",
+      label: "文稿",
+      englishLabel: "WRITING",
+      description: "记录技术实践、探索尝试，以及逐步形成的思考。",
+    },
+    {
       key: "journal",
       notionOption: "流水账",
-      index: "03",
+      index: "04",
       label: "流水账",
       englishLabel: "JOURNAL",
       description: "偶尔记录生活、想法和正在发生的事。",

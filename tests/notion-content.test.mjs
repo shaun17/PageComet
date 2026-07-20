@@ -73,8 +73,8 @@ const richTextProperty = (type, value) => ({
     : [],
 });
 
-/** 构造同时包含项目地址和仓库地址的最小已发布页面。 */
-const createPublishedPage = (repositoryUrl) => ({
+/** 构造同时包含项目地址和仓库地址的最小已发布页面，并允许覆盖分类。 */
+const createPublishedPage = (repositoryUrl, categoryName = "个人作品") => ({
   object: "page",
   id: "project-entry",
   created_time: "2026-07-19T00:00:00.000Z",
@@ -84,7 +84,7 @@ const createPublishedPage = (repositoryUrl) => ({
   properties: {
     标题: richTextProperty("title", "Atlas Notes"),
     Slug: richTextProperty("rich_text", "atlas-notes"),
-    分类: { type: "select", select: { name: "个人作品" } },
+    分类: { type: "select", select: { name: categoryName } },
     状态: { type: "select", select: { name: "已发布" } },
     摘要: richTextProperty("rich_text", "一个开源 Web 项目。"),
     发布日期: { type: "date", date: { start: "2026-07-19" } },
@@ -159,6 +159,17 @@ test("maps project and repository URLs from Notion into one content entry", () =
   assert.equal(entry.repositoryUrl, "https://github.com/example/atlas-notes");
 });
 
+test("maps the Notion manuscript category to the writing route", () => {
+  const entry = normalizeContentPage(
+    createPublishedPage(null, "文稿"),
+    [],
+    resolvePropertyNames(),
+  );
+
+  assert.equal(entry.category, "writing");
+  assert.equal(entry.route, "/writing/atlas-notes");
+});
+
 test("keeps an empty repository property as null", () => {
   const entry = normalizeContentPage(
     createPublishedPage(null),
@@ -188,6 +199,18 @@ test("requires the GitHub repository field in the Notion schema", () => {
   assert.throws(
     () => validateContentSchema(source, resolvePropertyNames()),
     /缺少字段「GitHub 仓库」/,
+  );
+});
+
+test("requires the manuscript option in the Notion category schema", () => {
+  const source = createDataSource();
+  source.properties.分类.select.options = source.properties.分类.select.options.filter(
+    ({ name }) => name !== "文稿",
+  );
+
+  assert.throws(
+    () => validateContentSchema(source, resolvePropertyNames()),
+    /分类.*缺少固定选项：文稿/,
   );
 });
 

@@ -1,5 +1,7 @@
+import { CONTENT_CATEGORY_KEYS } from "../../config/content-category-keys.mjs";
+
 /** 网站内容在代码中的稳定分类，避免页面层依赖 Notion 里的中文选项。 */
-export type ContentCategory = "career" | "works" | "journal";
+export type ContentCategory = (typeof CONTENT_CATEGORY_KEYS)[number];
 
 /** 构建阶段解析出的公开网页信息，用于生成静态链接摘要。 */
 export interface ContentLinkPreview {

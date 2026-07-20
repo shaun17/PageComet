@@ -12,6 +12,7 @@ const expectedInternalRoutes = [
   "/works/atlas-notes/",
   "/works/focus-timer/",
   "/works/pocket-gallery/",
+  "/writing/writing-with-notion/",
   "/journal/a-city-walk/",
 ];
 
@@ -24,6 +25,12 @@ const extractAnchors = (html) => html.match(/<a\b[^>]*>/gi) ?? [];
 /** 按 href 精确查找构建后的链接标签。 */
 const findAnchor = (html, href) =>
   extractAnchors(html).find((anchor) => anchor.includes(`href="${href}"`));
+
+/** 从最终首页依次提取目录编号、链接与标题，锁定用户看到的真实顺序。 */
+const extractDirectoryColumns = (html) =>
+  [...html.matchAll(
+    /<section class="directory-column"[^>]*>[\s\S]*?<span class="column-index"[^>]*>([^<]+)<\/span>[\s\S]*?<h2[^>]*><a href="([^"]+)">([^<]+)<\/a>/g,
+  )].map((match) => ({ index: match[1], href: match[2], label: match[3] }));
 
 /** 只提取文章标题区的项目入口，避免页脚 GitHub 声明干扰组合断言。 */
 const extractProjectLinks = (html) =>
@@ -38,8 +45,8 @@ const escapeHtmlText = (value) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-/** 首页保持极简三列，并且原有内容和联系入口没有丢失。 */
-test("builds the complete three-column homepage", async () => {
+/** 首页保持极简四列，并且分类顺序、原有内容和联系入口没有丢失。 */
+test("builds the complete four-column homepage", async () => {
   const html = await readRoute();
 
   assert.ok(html.includes(`<html lang="${siteConfig.locale}">`));
@@ -59,9 +66,16 @@ test("builds the complete three-column homepage", async () => {
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
-  assert.equal((html.match(/class="directory-column"/g) ?? []).length, 3);
+  assert.equal((html.match(/class="directory-column"/g) ?? []).length, 4);
+  assert.deepEqual(extractDirectoryColumns(html), [
+    { index: "01", href: "/career/", label: "职业经历" },
+    { index: "02", href: "/works/", label: "个人作品" },
+    { index: "03", href: "/writing/", label: "文稿" },
+    { index: "04", href: "/journal/", label: "流水账" },
+  ]);
   assert.ok(findAnchor(html, "/career/"));
   assert.ok(findAnchor(html, "/works/"));
+  assert.ok(findAnchor(html, "/writing/"));
   assert.ok(findAnchor(html, "/journal/"));
 
   for (const href of expectedInternalRoutes) {
@@ -100,7 +114,7 @@ test("builds the complete three-column homepage", async () => {
   assert.match(html, /<!--\/email_off-->/);
 });
 
-/** 三个分类页统一由内容数据生成，全部条目都具有站内静态详情页。 */
+/** 四个分类页统一由内容数据生成，全部条目都具有站内静态详情页。 */
 test("builds category indexes and an internal article", async () => {
   await Promise.all(
     expectedInternalRoutes.map((route) =>
@@ -111,6 +125,7 @@ test("builds category indexes and an internal article", async () => {
   const [
     career,
     works,
+    writing,
     journal,
     article,
     exampleCareer,
@@ -123,8 +138,9 @@ test("builds category indexes and an internal article", async () => {
     await Promise.all([
       readRoute("career/index.html"),
       readRoute("works/index.html"),
+      readRoute("writing/index.html"),
       readRoute("journal/index.html"),
-      readRoute("journal/writing-with-notion/index.html"),
+      readRoute("writing/writing-with-notion/index.html"),
       readRoute("career/northstar-studio/index.html"),
       readRoute("works/atlas-notes/index.html"),
       readRoute("works/focus-timer/index.html"),
@@ -136,6 +152,7 @@ test("builds category indexes and an internal article", async () => {
   for (const html of [
     career,
     works,
+    writing,
     journal,
     article,
     exampleCareer,
@@ -156,8 +173,9 @@ test("builds category indexes and an internal article", async () => {
   assert.match(works, /Atlas Notes/);
   assert.match(works, /Focus Timer/);
   assert.match(works, /Pocket Gallery/);
-  assert.match(journal, /03 \/ JOURNAL/);
-  assert.ok(findAnchor(journal, "/journal/writing-with-notion/"));
+  assert.match(writing, /03 \/ WRITING/);
+  assert.ok(findAnchor(writing, "/writing/writing-with-notion/"));
+  assert.match(journal, /04 \/ JOURNAL/);
   assert.ok(findAnchor(career, "/career/northstar-studio/"));
   assert.ok(findAnchor(works, "/works/atlas-notes/"));
   assert.ok(findAnchor(journal, "/journal/a-city-walk/"));
@@ -223,6 +241,7 @@ test("builds category indexes and an internal article", async () => {
   assert.doesNotMatch(duplicateLinkNav, /<span>访问项目<\/span>/);
   assert.match(duplicateLinkNav, /<span>GitHub<\/span>/);
   assert.doesNotMatch(exampleJournal, /class="project-links"/);
+  assert.doesNotMatch(article, /class="project-links"/);
 
   assert.match(article, /<h1>用 Notion 写一篇文章<\/h1>/);
   assert.match(article, /class="notion-content"/);
@@ -259,10 +278,10 @@ test("builds category indexes and an internal article", async () => {
   assert.equal((article.match(/allowfullscreen/g) ?? []).length, 2);
   assert.ok(
     article.includes(
-      `href="${siteConfig.origin}/journal/writing-with-notion/"`,
+      `href="${siteConfig.origin}/writing/writing-with-notion/"`,
     ),
   );
-  const internalArticleAnchor = findAnchor(article, "/journal/writing-with-notion/");
+  const internalArticleAnchor = findAnchor(article, "/writing/writing-with-notion/");
   assert.ok(internalArticleAnchor);
   assert.doesNotMatch(internalArticleAnchor, /target=/);
   assert.match(internalArticleAnchor, /class="notion-mention notion-mention-internal"/);
@@ -306,7 +325,7 @@ test("builds category indexes and an internal article", async () => {
   assert.doesNotMatch(article, /<script>alert\("xss"\)<\/script>/);
   assert.match(article, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
   assert.doesNotMatch(article, /javascript:alert/);
-  await assert.rejects(access(new URL("journal/start-here/index.html", buildRoot)));
+  await assert.rejects(access(new URL("writing/start-here/index.html", buildRoot)));
 });
 
 /** 正式产物不能泄漏 Notion 凭据或一小时后失效的临时资源地址。 */
@@ -354,7 +373,8 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(headers, /Cache-Control: public, max-age=31536000, immutable/);
   assert.match(headers, /\/_astro\/\*/);
   assert.match(headers, /\/notion-assets\/\*/);
-  assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /border-block:1px solid var\(--line-strong\)/);
   assert.match(css, /content:"→"/);
   assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);

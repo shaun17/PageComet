@@ -1,4 +1,5 @@
-const FIXED_CATEGORY_KEYS = ["career", "works", "journal"];
+import { CONTENT_CATEGORY_KEYS } from "./content-category-keys.mjs";
+
 const NOTION_PAGE_ID_PATTERN = /^(?:[0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i;
 
 /** 校验必填文字并返回去除首尾空白后的值。 */
@@ -94,8 +95,13 @@ export const defineSiteConfig = (config) => {
     requireText(paragraph, `home.biography[${index}]`),
   );
 
-  if (!Array.isArray(config.categories) || config.categories.length !== 3) {
-    throw new TypeError("站点配置 categories 必须包含 career、works、journal 三个分类");
+  if (
+    !Array.isArray(config.categories) ||
+    config.categories.length !== CONTENT_CATEGORY_KEYS.length
+  ) {
+    throw new TypeError(
+      `站点配置 categories 必须完整包含：${CONTENT_CATEGORY_KEYS.join("、")}`,
+    );
   }
   const categoryKeys = new Set();
   const notionOptions = new Set();
@@ -103,8 +109,10 @@ export const defineSiteConfig = (config) => {
   config.categories.forEach((category, index) => {
     const path = `categories[${index}]`;
     const key = requireText(category?.key, `${path}.key`);
-    if (!FIXED_CATEGORY_KEYS.includes(key) || categoryKeys.has(key)) {
-      throw new TypeError(`${path}.key 必须是不重复的 career、works 或 journal`);
+    if (!CONTENT_CATEGORY_KEYS.includes(key) || categoryKeys.has(key)) {
+      throw new TypeError(
+        `${path}.key 必须是不重复的 ${CONTENT_CATEGORY_KEYS.join("、")} 之一`,
+      );
     }
     categoryKeys.add(key);
 
@@ -123,7 +131,7 @@ export const defineSiteConfig = (config) => {
       requireText(category[field], `${path}.${field}`);
     }
   });
-  for (const key of FIXED_CATEGORY_KEYS) {
+  for (const key of CONTENT_CATEGORY_KEYS) {
     if (!categoryKeys.has(key)) throw new TypeError(`站点配置 categories 缺少 ${key} 分类`);
   }
   if (!categoryKeys.has(config.home.headline.categoryKey)) {

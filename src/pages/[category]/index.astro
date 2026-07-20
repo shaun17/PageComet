@@ -1,0 +1,29 @@
+---
+import CategoryPage from "../../components/CategoryPage.astro";
+import type { CategoryDefinition } from "../../content/categories";
+import { ORDERED_CATEGORIES } from "../../content/categories";
+import { getCategoryEntries } from "../../content/site-content";
+import type { ContentEntry } from "../../lib/notion";
+
+/** 按站点配置生成全部分类首页，新增分类时不再复制路由文件。 */
+export async function getStaticPaths() {
+  return Promise.all(
+    ORDERED_CATEGORIES.map(async (category) => ({
+      params: { category: category.key },
+      props: {
+        category,
+        entries: await getCategoryEntries(category.key),
+      },
+    })),
+  );
+}
+
+interface Props {
+  category: CategoryDefinition;
+  entries: ContentEntry[];
+}
+
+const { category, entries } = Astro.props;
+---
+
+<CategoryPage category={category} entries={entries} />
