@@ -5,10 +5,13 @@ import { ORDERED_CATEGORIES } from "../../content/categories";
 import { getCategoryEntries } from "../../content/site-content";
 import type { ContentEntry } from "../../lib/notion";
 
-/** 按站点配置生成全部分类首页，新增分类时不再复制路由文件。 */
+/** 通用目录页只承载文章型分类；流水账使用独立的时间流页面。 */
 export async function getStaticPaths() {
+  const articleCategories = ORDERED_CATEGORIES.filter(
+    (category) => category.key !== "journal",
+  );
   return Promise.all(
-    ORDERED_CATEGORIES.map(async (category) => ({
+    articleCategories.map(async (category) => ({
       params: { category: category.key },
       props: {
         category,

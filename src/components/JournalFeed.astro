@@ -1,0 +1,159 @@
+---
+import type { ContentBlock, ContentEntry } from "../lib/notion";
+import { partitionJournalContent } from "../content/journal-content";
+import NotionBlocks from "./NotionBlocks.astro";
+
+interface Props {
+  entries: ContentEntry[];
+}
+
+const { entries } = Astro.props;
+
+/** ISO 日期保持原始日历值；只有数据本身包含时间时才展示小时和分钟。 */
+const formatTimestamp = (value: string): string => {
+  const [date = value, time] = value.split("T", 2);
+  const formattedDate = date.slice(0, 10).replaceAll("-", ".");
+  return time ? `${formattedDate} ${time.slice(0, 5)}` : formattedDate;
+};
+
+/** 将可选封面转换成普通图片附件，让旧内容迁移到时间流后不会丢图。 */
+const createCoverBlock = (entry: ContentEntry): ContentBlock | null =>
+  entry.cover
+    ? {
+        id: `${entry.id}-cover`,
+        type: "image",
+        richText: [],
+        children: [],
+        image: entry.cover,
+      }
+    : null;
+
+const feedItems = entries.map((entry) => {
+  const { textBlocks, attachmentBlocks } = partitionJournalContent(entry.blocks);
+  const cover = createCoverBlock(entry);
+  const timestamp = entry.publishedAt ?? entry.createdAt;
+  const safeId = entry.id.replaceAll(/[^a-zA-Z0-9_-]/g, "-");
+  return {
+    textBlocks,
+    attachmentBlocks: cover ? [cover, ...attachmentBlocks] : attachmentBlocks,
+    timestamp,
+    formattedTimestamp: formatTimestamp(timestamp),
+    timeId: `journal-time-${safeId}`,
+    textId: `journal-text-${safeId}`,
+  };
+});
+---
+
+<section class="journal-feed" aria-label="流水账时间流">
+  {
+    feedItems.length > 0 ? (
+      <ol>
+        {feedItems.map((item) => (
+          <li>
+            <article class="journal-entry" aria-labelledby={item.timeId} data-journal-entry>
+              <header class="journal-entry-meta">
+                <time id={item.timeId} datetime={item.timestamp}>{item.formattedTimestamp}</time>
+              </header>
+
+              {item.textBlocks.length > 0 && (
+                <>
+                  <div
+                    id={item.textId}
+                    class="journal-entry-copy notion-content"
+                    data-journal-text
+                  >
+                    <NotionBlocks blocks={item.textBlocks} />
+                  </div>
+                  <button
+                    class="journal-entry-toggle"
+                    type="button"
+                    aria-controls={item.textId}
+                    aria-expanded="false"
+                    data-journal-toggle
+                    hidden
+                  >
+                    展开全文
+                  </button>
+                </>
+              )}
+
+              {item.attachmentBlocks.length > 0 && (
+                <div class="journal-entry-attachments notion-content">
+                  <NotionBlocks blocks={item.attachmentBlocks} />
+                </div>
+              )}
+            </article>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p class="journal-feed-empty">这里还没有已发布的内容。</p>
+    )
+  }
+</section>
+
+<script>
+  const journalEntries = document.querySelectorAll<HTMLElement>("[data-journal-entry]");
+
+  /** 把 CSS 中的 px/rem 长度换算成像素，保证折叠阈值只有一个来源。 */
+  const readCssLength = (value: string): number => {
+    const amount = Number.parseFloat(value);
+    if (!Number.isFinite(amount)) return 0;
+    return value.trim().endsWith("rem")
+      ? amount * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+      : amount;
+  };
+
+  /** 根据真实渲染高度决定是否显示展开按钮，并保留用户主动展开的状态。 */
+  const refreshJournalEntry = (entry: HTMLElement) => {
+    const content = entry.querySelector<HTMLElement>("[data-journal-text]");
+    const button = entry.querySelector<HTMLButtonElement>("[data-journal-toggle]");
+    if (!content || !button) return;
+
+    const collapseHeight = readCssLength(
+      getComputedStyle(content).getPropertyValue("--journal-collapsed-height"),
+    );
+    const overflows = collapseHeight > 0 && content.scrollHeight > collapseHeight + 1;
+    if (!overflows) {
+      content.removeAttribute("data-collapsed");
+      button.hidden = true;
+      button.setAttribute("aria-expanded", "false");
+      button.textContent = "展开全文";
+      return;
+    }
+
+    button.hidden = false;
+    if (button.getAttribute("aria-expanded") === "true") {
+      content.removeAttribute("data-collapsed");
+      return;
+    }
+    content.setAttribute("data-collapsed", "");
+  };
+
+  for (const entry of journalEntries) {
+    const button = entry.querySelector<HTMLButtonElement>("[data-journal-toggle]");
+    refreshJournalEntry(entry);
+    button?.addEventListener("click", () => {
+      const content = entry.querySelector<HTMLElement>("[data-journal-text]");
+      if (!content) return;
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      button.textContent = expanded ? "展开全文" : "收起";
+      content.toggleAttribute("data-collapsed", expanded);
+    });
+  }
+
+  let resizeFrame = 0;
+  /** 视口变化后统一复算，避免窄屏换行后沿用旧的折叠判断。 */
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      for (const entry of journalEntries) refreshJournalEntry(entry);
+    });
+  });
+
+  /** 字体完成加载后再核对一次，消除字体度量变化造成的边界误判。 */
+  document.fonts?.ready.then(() => {
+    for (const entry of journalEntries) refreshJournalEntry(entry);
+  });
+</script>

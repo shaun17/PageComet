@@ -24,15 +24,18 @@ import type {
 const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 // Cloudflare Pages 单个静态文件上限为 25 MiB，构建阶段提前给出明确错误。
 const DEFAULT_MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+const DEFAULT_MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 interface ResolvedMediaLocalizationOptions {
   outputDirectory: string;
   publicPath: string;
   maxImageBytes: number;
   maxVideoBytes: number;
+  maxAudioBytes: number;
   fetchImpl: typeof fetch;
   localizeExternalImages: boolean;
   localizeExternalVideos: boolean;
+  localizeExternalAudios: boolean;
   maxRedirects: number;
   requestTimeoutMs: number;
 }
@@ -108,7 +111,8 @@ const downloadMedia = async <T extends ContentMedia>(
   kind: MediaKind,
   options: ResolvedMediaLocalizationOptions,
 ): Promise<T> => {
-  const label = kind === "image" ? "Notion 图片" : "Notion 视频";
+  const label =
+    kind === "image" ? "Notion 图片" : kind === "video" ? "Notion 视频" : "Notion 音频";
   let source: URL;
   try {
     source = new URL(media.url);
@@ -136,7 +140,12 @@ const downloadMedia = async <T extends ContentMedia>(
   try {
     if (!response.ok) throw new Error(`下载${label}失败：HTTP ${response.status}`);
 
-    const maxBytes = kind === "image" ? options.maxImageBytes : options.maxVideoBytes;
+    const maxBytes =
+      kind === "image"
+        ? options.maxImageBytes
+        : kind === "video"
+          ? options.maxVideoBytes
+          : options.maxAudioBytes;
     const declaredBytes = Number(response.headers.get("content-length"));
     if (Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
       throw new Error(`${label}声明大小超过 ${maxBytes} 字节`);
@@ -174,7 +183,7 @@ const downloadMedia = async <T extends ContentMedia>(
   }
 };
 
-/** 递归本地化正文中的图片与 Notion 上传视频，并保持块对象不可变。 */
+/** 递归本地化正文中的图片、视频与音频，并保持块对象不可变。 */
 const localizeBlocks = async (
   blocks: ContentBlock[],
   options: ResolvedMediaLocalizationOptions,
@@ -186,13 +195,18 @@ const localizeBlocks = async (
       block.image?.source === "notion" || (options.localizeExternalImages && !!block.image);
     const shouldDownloadVideo =
       block.video?.source === "notion" || (options.localizeExternalVideos && !!block.video);
+    const shouldDownloadAudio =
+      block.audio?.source === "notion" || (options.localizeExternalAudios && !!block.audio);
     const image = shouldDownloadImage
       ? await downloadMedia(block.image!, "image", options)
       : block.image;
     const video = shouldDownloadVideo
       ? await downloadMedia(block.video!, "video", options)
       : block.video;
-    localized.push({ ...block, children, image, video });
+    const audio = shouldDownloadAudio
+      ? await downloadMedia(block.audio!, "audio", options)
+      : block.audio;
+    localized.push({ ...block, children, image, video, audio });
   }
   return localized;
 };
@@ -208,9 +222,11 @@ const localizeContentEntryMediaInternal = async (
     publicPath: options.publicPath ?? "/notion-assets",
     maxImageBytes: options.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES,
     maxVideoBytes: options.maxVideoBytes ?? DEFAULT_MAX_VIDEO_BYTES,
+    maxAudioBytes: options.maxAudioBytes ?? DEFAULT_MAX_AUDIO_BYTES,
     fetchImpl: remoteFetcher.fetch,
     localizeExternalImages: options.localizeExternalImages ?? false,
     localizeExternalVideos: options.localizeExternalVideos ?? false,
+    localizeExternalAudios: options.localizeExternalAudios ?? false,
     maxRedirects: options.maxRedirects ?? 5,
     requestTimeoutMs: options.requestTimeoutMs ?? 10_000,
   };

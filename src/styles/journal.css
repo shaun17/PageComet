@@ -1,0 +1,138 @@
+.journal-shell {
+  --journal-feed-width: 46rem;
+}
+
+.journal-feed {
+  width: min(100%, var(--journal-feed-width));
+  border-top: 1px solid var(--text-primary);
+  animation: content-reveal 420ms 80ms ease-out both;
+}
+
+.journal-feed ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journal-feed li {
+  border-bottom: 1px solid var(--line);
+}
+
+.journal-entry {
+  padding: clamp(1.5rem, 3.5vw, 2.25rem) 0;
+}
+
+.journal-entry-meta {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.journal-entry-copy,
+.journal-entry-attachments {
+  max-width: 100%;
+  margin: 0;
+}
+
+.journal-entry-copy {
+  --journal-collapsed-height: 12rem;
+  position: relative;
+}
+
+.journal-entry-copy[data-collapsed] {
+  max-height: var(--journal-collapsed-height);
+  overflow: hidden;
+}
+
+/* 渐隐只表示后面还有文字，不拦截正文中的选择、链接或按钮。 */
+.journal-entry-copy[data-collapsed]::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4rem;
+  background: linear-gradient(to bottom, transparent, var(--page-background));
+  content: "";
+  pointer-events: none;
+}
+
+.journal-entry-copy > :last-child,
+.journal-entry-attachments > :last-child,
+.journal-entry-copy > :last-child > :last-child,
+.journal-entry-attachments > :last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.journal-entry-toggle {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  transition: color 160ms ease;
+}
+
+.journal-entry-toggle[hidden] {
+  display: none;
+}
+
+.journal-entry-toggle:focus-visible {
+  border-radius: 0.12rem;
+  outline: 2px solid currentColor;
+  outline-offset: 0.24rem;
+}
+
+.journal-entry-attachments {
+  margin-top: 1.25rem;
+}
+
+.journal-entry-attachments .notion-image,
+.journal-entry-attachments .notion-media {
+  width: 100%;
+}
+
+.journal-entry-attachments .notion-image,
+.journal-entry-attachments .notion-media,
+.journal-entry-attachments .notion-columns {
+  margin-bottom: 1rem;
+}
+
+.journal-entry-attachments > :last-child,
+.journal-entry-attachments > :last-child .notion-image,
+.journal-entry-attachments > :last-child .notion-media,
+.journal-entry-attachments > :last-child .notion-columns {
+  margin-bottom: 0;
+}
+
+.journal-feed-empty {
+  margin: 0;
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .journal-entry-toggle:hover {
+    color: var(--text-primary);
+  }
+}
+
+@media (max-width: 600px) {
+  .journal-entry {
+    padding: 1.35rem 0 1.5rem;
+  }
+
+  .journal-entry-copy {
+    --journal-collapsed-height: 11rem;
+    font-size: 1rem;
+  }
+}

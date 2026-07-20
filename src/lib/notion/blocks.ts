@@ -96,7 +96,12 @@ export const normalizeNotionBlock = (
     const video = readFileMedia(payload);
     if (video) block.video = video;
   }
-  if (["bookmark", "link_preview", "embed", "audio", "file", "pdf"].includes(type)) {
+  if (type === "audio") {
+    block.caption = readCaption(payload);
+    const audio = readFileMedia(payload);
+    if (audio) block.audio = audio;
+  }
+  if (["bookmark", "link_preview", "embed", "file", "pdf"].includes(type)) {
     block.url = readBlockUrl(payload);
     block.caption = readCaption(payload);
   }

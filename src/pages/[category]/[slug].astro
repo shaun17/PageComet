@@ -3,13 +3,15 @@ import type { ContentEntry } from "../../lib/notion";
 import ArticlePage from "../../components/ArticlePage.astro";
 import { getSiteContent } from "../../content/site-content";
 
-/** 按内容条目的分类与 Slug 生成全部静态详情页。 */
+/** 为文章型分类生成详情页；流水账只公开统一时间流，不生成永久链接。 */
 export async function getStaticPaths() {
   const entries = await getSiteContent();
-  return entries.map((entry) => ({
-    params: { category: entry.category, slug: entry.slug },
-    props: { entry },
-  }));
+  return entries
+    .filter((entry) => entry.category !== "journal")
+    .map((entry) => ({
+      params: { category: entry.category, slug: entry.slug },
+      props: { entry },
+    }));
 }
 
 interface Props {

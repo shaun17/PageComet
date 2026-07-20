@@ -1,0 +1,10 @@
+---
+import JournalPage from "../../components/JournalPage.astro";
+import { CATEGORY_DEFINITIONS } from "../../content/categories";
+import { getJournalEntries } from "../../content/site-content";
+
+const category = CATEGORY_DEFINITIONS.journal;
+const entries = await getJournalEntries();
+---
+
+<JournalPage category={category} entries={entries} />

@@ -7,6 +7,8 @@ import { enrichContentLinkPreviews } from "./link-preview";
 import { createCachedLinkPreviewResolver } from "./link-preview-resolver";
 import { TEST_CONTENT } from "./test-content";
 
+export { getEntryHref } from "./entry-href";
+
 /** 为正式内容补充网页标题和摘要；失败只记录域名并保留原始 mention。 */
 const addExternalLinkPreviews = async (
   entries: ContentEntry[],
@@ -65,6 +67,11 @@ export const getCategoryEntries = async (
   category: ContentCategory,
 ): Promise<ContentEntry[]> => (await getSiteContent()).filter((entry) => entry.category === category);
 
-/** 所有数据库条目统一进入站内静态详情页，外部链接只作为内容元数据保留。 */
-export const getEntryHref = (entry: ContentEntry): string =>
-  `${entry.route}/`;
+/** 流水账严格按发布时间倒序展示，不受文章目录的人工排序影响。 */
+export const getJournalEntries = async (): Promise<ContentEntry[]> =>
+  (await getCategoryEntries("journal")).toSorted((left, right) => {
+    const leftTime = Date.parse(left.publishedAt ?? left.createdAt);
+    const rightTime = Date.parse(right.publishedAt ?? right.createdAt);
+    if (leftTime !== rightTime) return rightTime - leftTime;
+    return left.id.localeCompare(right.id);
+  });

@@ -131,7 +131,7 @@ const groups = groupBlocks(blocks);
             )}
           </figure>
         )}
-        {["image", "video", "embed"].includes(item.type) && <NotionMedia item={item} />}
+        {["image", "video", "audio", "embed"].includes(item.type) && <NotionMedia item={item} />}
         {(item.type === "bookmark" || item.type === "link_preview") &&
           bookmark &&
           item.linkPreview && (

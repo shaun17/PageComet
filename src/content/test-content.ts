@@ -160,6 +160,16 @@ const INTERNAL_ARTICLE: ContentEntry = {
       caption: [text("Notion 上传视频")],
     },
     {
+      ...block("uploaded-audio", "audio"),
+      audio: {
+        url: "/notion-assets/4f8734c5e13ac599e168cf247a51c1dd0758537ce00bf16d7fed1a3d14d07041.wav",
+        source: "notion",
+        expiryTime: null,
+        localized: true,
+      },
+      caption: [text("Notion 上传音频")],
+    },
+    {
       ...block("youtube-video", "video"),
       video: {
         url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -197,5 +207,56 @@ const INTERNAL_ARTICLE: ContentEntry = {
   ],
 };
 
+const JOURNAL_FEED_ID = "d1111111-1111-4111-8111-111111111111";
+const JOURNAL_FEED_NOTION_URL =
+  "https://www.notion.so/d1111111111141118111111111111111";
+
+/** 复用完整正文夹具并替换自引用，专门覆盖流水账折叠和多媒体时间流。 */
+const createJournalFeedBlocks = (): ContentBlock[] => [
+  block("journal-long-copy", "paragraph", [
+    text(
+      "今天把零散的念头放进同一条时间流里。这里不需要文章标题，也不需要分享链接，只要打开页面就能看到当时写下的内容。".repeat(
+        12,
+      ),
+    ),
+  ]),
+  ...INTERNAL_ARTICLE.blocks.map((item) =>
+    item.id === "self-link"
+      ? {
+          ...item,
+          richText: [
+            text("站内链接也会改写："),
+            text("本条流水账", JOURNAL_FEED_NOTION_URL),
+          ],
+        }
+      : item,
+  ),
+];
+
+const JOURNAL_FEED_ENTRY: ContentEntry = {
+  id: JOURNAL_FEED_ID,
+  title: "一条包含多媒体的长流水账",
+  slug: "multimedia-journal",
+  category: "journal",
+  status: "published",
+  summary: "用于验证流水账长文本折叠与多媒体素材展示。",
+  publishedAt: "2026-07-19",
+  createdAt: "2026-07-19T08:00:00.000Z",
+  updatedAt: "2026-07-19T09:00:00.000Z",
+  order: 5,
+  featured: false,
+  tags: ["日常"],
+  externalUrl: null,
+  repositoryUrl: null,
+  notionUrl: JOURNAL_FEED_NOTION_URL,
+  route: "/journal/multimedia-journal",
+  cover: null,
+  blocks: createJournalFeedBlocks(),
+};
+
 /** 仅在 CONTENT_SOURCE=fixture 时使用，绝不会被正式发布脚本读取。 */
-export const TEST_CONTENT: ContentEntry[] = [...CONTENT_SNAPSHOT, INTERNAL_ARTICLE];
+export const TEST_CONTENT: ContentEntry[] = [
+  ...CONTENT_SNAPSHOT,
+  INTERNAL_ARTICLE,
+  JOURNAL_FEED_ENTRY,
+];

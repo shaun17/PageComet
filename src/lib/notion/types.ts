@@ -89,6 +89,7 @@ export interface ContentBlock {
   icon?: string;
   image?: ContentImage;
   video?: ContentMedia;
+  audio?: ContentMedia;
   url?: string;
   linkPreview?: ContentLinkPreview;
   title?: string;
@@ -144,8 +145,10 @@ export interface MediaLocalizationOptions {
   publicPath?: string;
   maxImageBytes?: number;
   maxVideoBytes?: number;
+  maxAudioBytes?: number;
   localizeExternalImages?: boolean;
   localizeExternalVideos?: boolean;
+  localizeExternalAudios?: boolean;
   maxRedirects?: number;
   requestTimeoutMs?: number;
 }

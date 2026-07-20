@@ -19,6 +19,11 @@
   padding-inline-end: 0;
 }
 
+/* 流水账不在首页复制内容目录，分类标题本身就是唯一入口。 */
+.directory-column-entry-only .column-heading {
+  margin-bottom: 0;
+}
+
 .column-heading {
   display: flex;
   align-items: baseline;

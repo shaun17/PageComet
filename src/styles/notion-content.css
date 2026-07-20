@@ -435,6 +435,13 @@
   object-fit: contain;
 }
 
+/* 音频使用浏览器原生控制器，宽度与同一条流水账的文字和附件对齐。 */
+.notion-media audio {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
 .notion-video-frame {
   position: relative;
   width: 100%;
@@ -452,7 +459,7 @@
 }
 
 .notion-content .notion-embed-link,
-.notion-content .notion-video-fallback {
+.notion-content .notion-media-fallback {
   margin: 0;
   padding: 1rem 0;
   border-top: 1px solid var(--line);

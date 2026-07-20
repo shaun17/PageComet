@@ -6,14 +6,13 @@ import { siteConfig } from "../src/config/site-config.mjs";
 
 const projectRoot = new URL("../", import.meta.url);
 const buildRoot = new URL("../dist/", import.meta.url);
-const expectedInternalRoutes = [
+const expectedArticleRoutes = [
   "/career/northstar-studio/",
   "/career/beacon-labs/",
   "/works/atlas-notes/",
   "/works/focus-timer/",
   "/works/pocket-gallery/",
   "/writing/writing-with-notion/",
-  "/journal/a-city-walk/",
 ];
 
 /** 读取某个静态路由的最终 HTML，而不是只验证 Astro 源码。 */
@@ -29,12 +28,20 @@ const findAnchor = (html, href) =>
 /** 从最终首页依次提取目录编号、链接与标题，锁定用户看到的真实顺序。 */
 const extractDirectoryColumns = (html) =>
   [...html.matchAll(
-    /<section class="directory-column"[^>]*>[\s\S]*?<span class="column-index"[^>]*>([^<]+)<\/span>[\s\S]*?<h2[^>]*><a href="([^"]+)">([^<]+)<\/a>/g,
+    /<section class="[^"]*directory-column[^"]*"[^>]*>[\s\S]*?<span class="column-index"[^>]*>([^<]+)<\/span>[\s\S]*?<h2[^>]*><a href="([^"]+)">([^<]+)<\/a>/g,
   )].map((match) => ({ index: match[1], href: match[2], label: match[3] }));
 
 /** 只提取文章标题区的项目入口，避免页脚 GitHub 声明干扰组合断言。 */
 const extractProjectLinks = (html) =>
   html.match(/<nav class="project-links"[^>]*>[\s\S]*?<\/nav>/)?.[0] ?? "";
+
+/** 只提取首页指定分类的一列，验证流水账没有再次展开条目目录。 */
+const extractDirectoryColumn = (html, category) =>
+  html.match(
+    new RegExp(
+      `<section class="[^"]*directory-column[^"]*" aria-labelledby="directory-${category}">[\\s\\S]*?<\\/section>`,
+    ),
+  )?.[0] ?? "";
 
 /** 把公开配置文字转换为 HTML 文本节点中的安全表示。 */
 const escapeHtmlText = (value) =>
@@ -45,8 +52,8 @@ const escapeHtmlText = (value) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-/** 首页保持极简四列，并且分类顺序、原有内容和联系入口没有丢失。 */
-test("builds the complete four-column homepage", async () => {
+/** 首页保持极简四列，流水账只留下二级页面入口。 */
+test("builds the four-column homepage with a single journal entry point", async () => {
   const html = await readRoute();
 
   assert.ok(html.includes(`<html lang="${siteConfig.locale}">`));
@@ -66,7 +73,7 @@ test("builds the complete four-column homepage", async () => {
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
-  assert.equal((html.match(/class="directory-column"/g) ?? []).length, 4);
+  assert.equal((html.match(/class="directory-column(?: |")/g) ?? []).length, 4);
   assert.deepEqual(extractDirectoryColumns(html), [
     { index: "01", href: "/career/", label: "职业经历" },
     { index: "02", href: "/works/", label: "个人作品" },
@@ -78,11 +85,18 @@ test("builds the complete four-column homepage", async () => {
   assert.ok(findAnchor(html, "/writing/"));
   assert.ok(findAnchor(html, "/journal/"));
 
-  for (const href of expectedInternalRoutes) {
+  for (const href of expectedArticleRoutes) {
     const anchor = findAnchor(html, href);
     assert.ok(anchor, `首页应指向站内静态详情页：${href}`);
     assert.doesNotMatch(anchor, /target=/);
   }
+
+  const journalColumn = extractDirectoryColumn(html, "journal");
+  assert.match(journalColumn, /directory-column-entry-only/);
+  assert.ok(findAnchor(journalColumn, "/journal/"));
+  assert.doesNotMatch(journalColumn, /class="directory-links"/);
+  assert.doesNotMatch(journalColumn, /一段城市散步|用 Notion 写一篇文章|更多/);
+  assert.equal((journalColumn.match(/<a\b/g) ?? []).length, 1);
 
   for (const contact of siteConfig.contacts) {
     const anchor = findAnchor(html, contact.href);
@@ -114,10 +128,10 @@ test("builds the complete four-column homepage", async () => {
   assert.match(html, /<!--\/email_off-->/);
 });
 
-/** 四个分类页统一由内容数据生成，全部条目都具有站内静态详情页。 */
-test("builds category indexes and an internal article", async () => {
+/** 文章型分类保留详情页，流水账改为唯一的多媒体时间流。 */
+test("builds article indexes and the journal feed", async () => {
   await Promise.all(
-    expectedInternalRoutes.map((route) =>
+    expectedArticleRoutes.map((route) =>
       access(new URL(`${route.slice(1)}index.html`, buildRoot)),
     ),
   );
@@ -127,40 +141,36 @@ test("builds category indexes and an internal article", async () => {
     works,
     writing,
     journal,
-    article,
+    exampleWriting,
     exampleCareer,
     exampleWork,
     repositoryOnlyWork,
     projectOnlyWork,
     duplicateLinkWork,
-    exampleJournal,
-  ] =
-    await Promise.all([
-      readRoute("career/index.html"),
-      readRoute("works/index.html"),
-      readRoute("writing/index.html"),
-      readRoute("journal/index.html"),
-      readRoute("writing/writing-with-notion/index.html"),
-      readRoute("career/northstar-studio/index.html"),
-      readRoute("works/atlas-notes/index.html"),
-      readRoute("works/focus-timer/index.html"),
-      readRoute("works/pocket-gallery/index.html"),
-      readRoute("works/shared-link/index.html"),
-      readRoute("journal/a-city-walk/index.html"),
-    ]);
+  ] = await Promise.all([
+    readRoute("career/index.html"),
+    readRoute("works/index.html"),
+    readRoute("writing/index.html"),
+    readRoute("journal/index.html"),
+    readRoute("writing/writing-with-notion/index.html"),
+    readRoute("career/northstar-studio/index.html"),
+    readRoute("works/atlas-notes/index.html"),
+    readRoute("works/focus-timer/index.html"),
+    readRoute("works/pocket-gallery/index.html"),
+    readRoute("works/shared-link/index.html"),
+  ]);
 
   for (const html of [
     career,
     works,
     writing,
     journal,
-    article,
+    exampleWriting,
     exampleCareer,
     exampleWork,
     repositoryOnlyWork,
     projectOnlyWork,
     duplicateLinkWork,
-    exampleJournal,
   ]) {
     assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
     assert.ok(findAnchor(html, siteConfig.designCredit.href));
@@ -178,24 +188,24 @@ test("builds category indexes and an internal article", async () => {
   assert.match(journal, /04 \/ JOURNAL/);
   assert.ok(findAnchor(career, "/career/northstar-studio/"));
   assert.ok(findAnchor(works, "/works/atlas-notes/"));
-  assert.ok(findAnchor(journal, "/journal/a-city-walk/"));
 
   assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
   assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
-  assert.match(exampleJournal, /<h1>一段城市散步<\/h1>/);
-  for (const html of [exampleCareer, exampleWork, exampleJournal, article]) {
+  assert.match(exampleWriting, /<h1>用 Notion 写一篇文章<\/h1>/);
+  for (const html of [exampleCareer, exampleWork, exampleWriting]) {
     assert.equal(
       (html.match(/class="article-divider"/g) ?? []).length,
       1,
-      "每种文章详情页都应具有同一个标题区分隔线",
+      "文章型详情页都应具有同一个标题区分隔线",
     );
     assert.equal(
       (html.match(/class="article-end-marker"/g) ?? []).length,
       1,
-      "每种文章详情页都应具有明确的 END 收尾标记",
+      "文章型详情页都应具有明确的 END 收尾标记",
     );
   }
+  assert.doesNotMatch(journal, /class="article-divider"|class="article-end-marker"/);
 
   const projectAnchor = findAnchor(exampleWork, "https://atlas-notes.example.com/");
   const repositoryAnchor = findAnchor(
@@ -240,58 +250,78 @@ test("builds category indexes and an internal article", async () => {
   );
   assert.doesNotMatch(duplicateLinkNav, /<span>访问项目<\/span>/);
   assert.match(duplicateLinkNav, /<span>GitHub<\/span>/);
-  assert.doesNotMatch(exampleJournal, /class="project-links"/);
-  assert.doesNotMatch(article, /class="project-links"/);
+  assert.doesNotMatch(exampleWriting, /class="project-links"/);
+  assert.match(exampleWriting, /class="notion-content"/);
+  const internalWritingAnchor = findAnchor(
+    exampleWriting,
+    "/writing/writing-with-notion/",
+  );
+  assert.ok(internalWritingAnchor);
+  assert.doesNotMatch(internalWritingAnchor, /target=/);
 
-  assert.match(article, /<h1>用 Notion 写一篇文章<\/h1>/);
-  assert.match(article, /class="notion-content"/);
-  assert.match(article, /<ul><li>/);
-  assert.match(article, /<blockquote>/);
-  const bookmarkAnchor = findAnchor(article, "https://example.com/reference");
+  assert.match(journal, /<section class="journal-feed" aria-label="流水账时间流">/);
+  assert.equal((journal.match(/class="journal-entry"/g) ?? []).length, 2);
+  assert.ok(journal.indexOf("2026.07.19") < journal.indexOf("2026.01.15"));
+  assert.match(journal, /关于周末、街道与慢下来的一段记录。/);
+  assert.doesNotMatch(journal, /一条包含多媒体的长流水账|一段城市散步/);
+  assert.equal((journal.match(/data-journal-text/g) ?? []).length, 2);
+  assert.equal((journal.match(/data-journal-toggle hidden/g) ?? []).length, 2);
+  assert.equal(
+    (journal.match(/class="journal-entry-attachments notion-content"/g) ?? []).length,
+    1,
+  );
+  assert.doesNotMatch(journal, /class="project-links"/);
+  assert.match(journal, /<script type="module" src="\/_astro\/[^\"]+\.js"><\/script>/);
+  assert.doesNotMatch(journal, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
+
+  assert.match(journal, /<ul><li>/);
+  assert.match(journal, /<blockquote>/);
+  const bookmarkAnchor = findAnchor(journal, "https://example.com/reference");
   assert.ok(bookmarkAnchor);
   assert.match(bookmarkAnchor, /target="_blank"/);
   assert.match(bookmarkAnchor, /class="notion-mention notion-mention-external"/);
-  assert.match(article, /<pre><code data-language="shell">/);
-  assert.match(article, /<details><summary>/);
+  assert.match(journal, /<pre><code data-language="shell">/);
+  assert.match(journal, /<details><summary>/);
   assert.match(
-    article,
+    journal,
     /<div class="notion-divider" role="separator"><span aria-hidden="true">·—·<\/span><\/div>/,
   );
   assert.match(
-    article,
+    journal,
     /<img src="\/notion-assets\/8550ce349fe18c2784edf8e4c798ede1e4062dca7607cd79a3bc00a63afa54a6\.gif" alt="动态操作演示" loading="lazy" decoding="async" data-notion-image-unmeasured>/,
   );
   assert.match(
-    article,
+    journal,
     /<div class="notion-columns"><section><figure class="notion-image notion-image-portrait"><a class="notion-image-link"[^>]*><img src="\/notion-assets\/ecd0cd4178539f17f752b77ff7ae77fcec37da042bebd8ca274cbea71d4d4205\.png" alt="竖屏截图一" width="360" height="780"/,
   );
   assert.equal(
-    (article.match(/class="notion-image notion-image-portrait"/g) ?? []).length,
+    (journal.match(/class="notion-image notion-image-portrait"/g) ?? []).length,
     2,
   );
   assert.match(
-    article,
+    journal,
     /<video src="\/notion-assets\/7e2817c0d96668fedb7bafd028b897d8ab82d81a433250f25452a4c818796f70\.mp4" controls playsinline preload="none" aria-label="Notion 上传视频"[^>]*>/,
   );
-  assert.match(article, /src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/);
-  assert.match(article, /src="https:\/\/player\.vimeo\.com\/video\/226053498\?h=a1599a8ee9"/);
-  assert.equal((article.match(/allowfullscreen/g) ?? []).length, 2);
-  assert.ok(
-    article.includes(
-      `href="${siteConfig.origin}/writing/writing-with-notion/"`,
-    ),
+  assert.match(
+    journal,
+    /<audio src="\/notion-assets\/4f8734c5e13ac599e168cf247a51c1dd0758537ce00bf16d7fed1a3d14d07041\.wav" controls preload="none" aria-label="Notion 上传音频"[^>]*>/,
   );
-  const internalArticleAnchor = findAnchor(article, "/writing/writing-with-notion/");
-  assert.ok(internalArticleAnchor);
-  assert.doesNotMatch(internalArticleAnchor, /target=/);
-  assert.match(internalArticleAnchor, /class="notion-mention notion-mention-internal"/);
-  assert.doesNotMatch(article, /www\.notion\.so\/11111111222233334444555555555555/);
-  const relatedEntryAnchor = findAnchor(article, "/career/northstar-studio/");
+  assert.match(journal, /src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/);
+  assert.match(journal, /src="https:\/\/player\.vimeo\.com\/video\/226053498\?h=a1599a8ee9"/);
+  assert.equal((journal.match(/allowfullscreen/g) ?? []).length, 2);
+  assert.ok(journal.includes(`href="${siteConfig.origin}/journal/"`));
+
+  const internalJournalAnchor = findAnchor(journal, "/journal/");
+  assert.ok(internalJournalAnchor);
+  assert.doesNotMatch(internalJournalAnchor, /target=/);
+  assert.match(internalJournalAnchor, /class="notion-mention notion-mention-internal"/);
+  assert.doesNotMatch(journal, /www\.notion\.so\/d1111111111141118111111111111111/);
+  const relatedEntryAnchor = findAnchor(journal, "/career/northstar-studio/");
   assert.ok(relatedEntryAnchor);
   assert.doesNotMatch(relatedEntryAnchor, /target=/);
   assert.match(relatedEntryAnchor, /class="notion-mention notion-mention-internal"/);
   const externalMentionAnchor = findAnchor(
-    article,
+    journal,
     "https://example.com/product?source=notion",
   );
   assert.ok(externalMentionAnchor);
@@ -300,32 +330,45 @@ test("builds category indexes and an internal article", async () => {
   assert.match(externalMentionAnchor, /rel="noopener noreferrer"/);
   assert.match(externalMentionAnchor, /aria-describedby="notion-link-preview-\d+-1"/);
   assert.match(
-    article,
+    journal,
     /<span class="notion-mention-mark" aria-hidden="true">↗<\/span><span class="notion-mention-label">示例产品<\/span>/,
   );
   assert.match(
-    article,
+    journal,
     /class="notion-link-preview-a11y" hidden>Example。用于验证正文链接摘要/,
   );
-  assert.match(article, /class="notion-link-preview" aria-hidden="true"/);
-  assert.doesNotMatch(article, /role="tooltip"/);
-  assert.match(article, /用于验证正文链接摘要、站点名称和安全外链属性的构建夹具。/);
+  assert.match(journal, /class="notion-link-preview" aria-hidden="true"/);
+  assert.doesNotMatch(journal, /role="tooltip"/);
+  assert.match(journal, /用于验证正文链接摘要、站点名称和安全外链属性的构建夹具。/);
   const standalonePreviewAnchor = findAnchor(
-    article,
+    journal,
     "https://example.com/product?source=standalone",
   );
   assert.ok(standalonePreviewAnchor);
-  assert.match(standalonePreviewAnchor, /aria-describedby="notion-link-preview-external-standalone-link"/);
-  assert.equal((article.match(/class="notion-link notion-link-card"/g) ?? []).length, 2);
-  assert.match(article, /独立链接会像 Notion 一样直接展示标题、来源与简短摘要。/);
+  assert.match(
+    standalonePreviewAnchor,
+    /aria-describedby="notion-link-preview-external-standalone-link"/,
+  );
+  assert.equal((journal.match(/class="notion-link notion-link-card"/g) ?? []).length, 2);
+  assert.match(journal, /独立链接会像 Notion 一样直接展示标题、来源与简短摘要。/);
   assert.equal(
-    extractAnchors(article).filter((anchor) => anchor.includes('href="/career/northstar-studio/"')).length,
+    extractAnchors(journal).filter((anchor) =>
+      anchor.includes('href="/career/northstar-studio/"'),
+    ).length,
     3,
   );
-  assert.doesNotMatch(article, /<script>alert\("xss"\)<\/script>/);
-  assert.match(article, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
-  assert.doesNotMatch(article, /javascript:alert/);
+  assert.doesNotMatch(journal, /<script>alert\("xss"\)<\/script>/);
+  assert.match(journal, /&lt;script&gt;alert\(&quot;xss&quot;\)&lt;\/script&gt;/);
+  assert.doesNotMatch(journal, /javascript:alert/);
   await assert.rejects(access(new URL("writing/start-here/index.html", buildRoot)));
+
+  for (const route of [
+    "journal/a-city-walk/index.html",
+    "journal/multimedia-journal/index.html",
+    "journal/start-here/index.html",
+  ]) {
+    await assert.rejects(access(new URL(route, buildRoot)));
+  }
 });
 
 /** 正式产物不能泄漏 Notion 凭据或一小时后失效的临时资源地址。 */
@@ -377,6 +420,30 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /border-block:1px solid var\(--line-strong\)/);
   assert.match(css, /content:"→"/);
+  const journalDirectoryRule = css.match(
+    /\.directory-column-entry-only \.column-heading\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(journalDirectoryRule);
+  assert.match(journalDirectoryRule, /margin-bottom:0/);
+  const journalFeedRule = css.match(/\.journal-feed\{([^}]*)\}/)?.[1];
+  assert.ok(journalFeedRule);
+  assert.match(journalFeedRule, /width:min\(100%,\s*var\(--journal-feed-width\)\)/);
+  assert.match(journalFeedRule, /border-top:1px solid var\(--text-primary\)/);
+  const journalCollapsedRule = css.match(
+    /\.journal-entry-copy\[data-collapsed\]\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(journalCollapsedRule);
+  assert.match(journalCollapsedRule, /max-height:var\(--journal-collapsed-height\)/);
+  assert.match(journalCollapsedRule, /overflow:hidden/);
+  const journalAttachmentMediaRule = css.match(
+    /\.journal-entry-attachments \.notion-image,\.journal-entry-attachments \.notion-media\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(journalAttachmentMediaRule);
+  assert.match(journalAttachmentMediaRule, /width:100%/);
+  const audioRule = css.match(/\.notion-media audio\{([^}]*)\}/)?.[1];
+  assert.ok(audioRule);
+  assert.match(audioRule, /display:block/);
+  assert.match(audioRule, /width:100%/);
   assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
   assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);

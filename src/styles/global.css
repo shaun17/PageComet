@@ -5,6 +5,7 @@
 @import "./content-list.css";
 @import "./article.css";
 @import "./notion-content.css";
+@import "./journal.css";
 
 @font-face {
   font-family: "Geist";

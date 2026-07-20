@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -95,6 +96,34 @@ test("allows the Cloudflare header glob but still rejects missing asset URLs", a
       verifyStaticOutput({ distRoot }),
       new RegExp(`引用了不存在的 Notion 资源：${missingAsset}`),
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts every supported content-hashed audio asset and its page reference", async () => {
+  const { root, distRoot } = await createStaticFixture();
+  const audioBody = Buffer.from("shared-audio-format-fixture");
+  const audioHash = createHash("sha256").update(audioBody).digest("hex");
+  const audioExtensions = ["aac", "flac", "m4a", "mp3", "oga", "ogg", "wav", "webm"];
+
+  try {
+    const assetsRoot = path.join(distRoot, "notion-assets");
+    await mkdir(assetsRoot);
+    for (const extension of audioExtensions) {
+      await writeFile(path.join(assetsRoot, `${audioHash}.${extension}`), audioBody);
+    }
+    await writeFile(
+      path.join(distRoot, "index.html"),
+      audioExtensions
+        .map(
+          (extension) =>
+            `<audio src="/notion-assets/${audioHash}.${extension}"></audio>`,
+        )
+        .join("\n"),
+    );
+
+    await verifyStaticOutput({ distRoot });
   } finally {
     await rm(root, { recursive: true, force: true });
   }

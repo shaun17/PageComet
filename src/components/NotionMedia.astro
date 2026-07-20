@@ -1,5 +1,6 @@
 ---
 import type { ContentBlock } from "../lib/notion";
+import { normalizeContentHref } from "../content/content-href";
 import { isPortraitImageDimensions } from "../content/image-presentation";
 import { richTextToPlainText } from "../content/render-rich-text";
 import { resolveVideoPresentation } from "../content/video-presentation";
@@ -10,7 +11,7 @@ interface Props {
 
 const { item } = Astro.props;
 const mediaCaption = richTextToPlainText(item.caption ?? []);
-const mediaTitle = mediaCaption || "文章视频";
+const mediaTitle = mediaCaption || (item.type === "audio" ? "音频" : "文章视频");
 const isAnimatedGif = item.image?.url.toLowerCase().split(/[?#]/, 1)[0]?.endsWith(".gif");
 const imageWidth = item.image?.width;
 const imageHeight = item.image?.height;
@@ -22,6 +23,37 @@ const videoPresentation =
     : item.type === "embed" && item.url
       ? resolveVideoPresentation(item.url, "embed")
       : null;
+
+interface AudioPresentation {
+  kind: "native" | "link";
+  href: string;
+  external: boolean;
+}
+
+/** 音频只接受站内资源和 HTTPS 地址，并为未知格式降级成普通链接。 */
+const resolveAudioPresentation = (value: string | undefined): AudioPresentation | null => {
+  const normalized = normalizeContentHref(value);
+  if (!normalized || normalized.kind === "email") return null;
+  let pathname: string;
+  if (normalized.href.startsWith("/") && !normalized.href.startsWith("//")) {
+    pathname = normalized.href.split(/[?#]/, 1)[0] ?? normalized.href;
+  } else {
+    const url = new URL(normalized.href);
+    if (url.protocol !== "https:") return null;
+    pathname = url.pathname;
+  }
+  const browserPlayable = /\.(?:aac|flac|m4a|mp3|mp4|oga|ogg|wav|webm)$/i.test(
+    pathname,
+  );
+  return {
+    kind: browserPlayable ? "native" : "link",
+    href: normalized.href,
+    external: normalized.kind === "external",
+  };
+};
+
+const audioPresentation =
+  item.type === "audio" ? resolveAudioPresentation(item.audio?.url) : null;
 ---
 
 {item.type === "image" && item.image && (
@@ -65,6 +97,7 @@ const videoPresentation =
         preload="none"
         aria-label={mediaTitle}
         data-notion-video
+        data-notion-player
       >
         <a
           href={videoPresentation.url}
@@ -74,7 +107,7 @@ const videoPresentation =
           打开视频
         </a>
       </video>
-      <p class="notion-video-fallback" data-notion-video-fallback hidden>
+      <p class="notion-video-fallback notion-media-fallback" data-notion-player-fallback hidden>
         <a
           href={videoPresentation.url}
           target={videoPresentation.external ? "_blank" : undefined}
@@ -111,13 +144,59 @@ const videoPresentation =
   </figure>
 )}
 
+{item.type === "audio" && audioPresentation && (
+  <figure class={`notion-media notion-media-audio notion-media-audio-${audioPresentation.kind}`}>
+    {audioPresentation.kind === "native" && (
+      <>
+        <audio
+          src={audioPresentation.href}
+          controls
+          preload="none"
+          aria-label={mediaTitle}
+          data-notion-audio
+          data-notion-player
+        >
+          <a
+            href={audioPresentation.href}
+            target={audioPresentation.external ? "_blank" : undefined}
+            rel={audioPresentation.external ? "noopener noreferrer" : undefined}
+          >
+            打开音频
+          </a>
+        </audio>
+        <p class="notion-audio-fallback notion-media-fallback" data-notion-player-fallback hidden>
+          <a
+            href={audioPresentation.href}
+            target={audioPresentation.external ? "_blank" : undefined}
+            rel={audioPresentation.external ? "noopener noreferrer" : undefined}
+          >
+            浏览器无法播放，打开原音频<span aria-hidden="true"> ↗</span>
+          </a>
+        </p>
+      </>
+    )}
+    {audioPresentation.kind === "link" && (
+      <p class="notion-embed-link">
+        <a
+          href={audioPresentation.href}
+          target={audioPresentation.external ? "_blank" : undefined}
+          rel={audioPresentation.external ? "noopener noreferrer" : undefined}
+        >
+          打开音频<span aria-hidden="true"> ↗</span>
+        </a>
+      </p>
+    )}
+    {mediaCaption && <figcaption>{mediaCaption}</figcaption>}
+  </figure>
+)}
+
 <script>
   import { isPortraitImageDimensions } from "../content/image-presentation";
 
   const unmeasuredImages = document.querySelectorAll<HTMLImageElement>(
     "[data-notion-image-unmeasured]",
   );
-  const videoPlayers = document.querySelectorAll<HTMLVideoElement>("[data-notion-video]");
+  const mediaPlayers = document.querySelectorAll<HTMLMediaElement>("[data-notion-player]");
 
   /** 构建阶段无法识别尺寸时，使用浏览器解码后的固有尺寸补上竖图版式。 */
   const applyIntrinsicImageLayout = (image: HTMLImageElement) => {
@@ -138,9 +217,9 @@ const videoPresentation =
     image.addEventListener("load", () => applyIntrinsicImageLayout(image), { once: true });
   }
 
-  for (const player of videoPlayers) {
+  for (const player of mediaPlayers) {
     const fallback = player.parentElement?.querySelector<HTMLElement>(
-      "[data-notion-video-fallback]",
+      "[data-notion-player-fallback]",
     );
     /** 播放失败时用备用链接替换黑屏，正常播放时保持页面干净。 */
     const replaceFailedPlayer = () => {

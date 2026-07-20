@@ -14,6 +14,7 @@ const RENDERABLE_BLOCKS = new Set<ContentBlock["type"]>([
   "code",
   "image",
   "video",
+  "audio",
   "embed",
   "bookmark",
   "link_preview",
@@ -60,6 +61,9 @@ const assertRenderableBlocks = (blocks: ContentBlock[], articleTitle: string): v
     }
     if (item.type === "video" && !isSafeMediaUrl(item.video?.url)) {
       throw new Error(`文章「${articleTitle}」包含无效的 Notion 视频地址`);
+    }
+    if (item.type === "audio" && !isSafeMediaUrl(item.audio?.url)) {
+      throw new Error(`文章「${articleTitle}」包含无效的 Notion 音频地址`);
     }
     if (item.type === "embed" && !isSafeMediaUrl(item.url)) {
       throw new Error(`文章「${articleTitle}」包含无效的 Notion 嵌入地址`);

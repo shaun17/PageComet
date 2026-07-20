@@ -10,26 +10,30 @@ interface Props {
 
 const { category, entries } = Astro.props;
 const headingId = `directory-${category.key}`;
-// 首页保持紧凑，只展示每个分类最靠前的三项，其余内容进入分类页。
-const visibleEntries = entries.slice(0, 3);
+// 流水账在首页只保留分类入口；其他分类继续展示前三条目录。
+const showsEntryDirectory = category.key !== "journal";
+const visibleEntries = showsEntryDirectory ? entries.slice(0, 3) : [];
 ---
 
-<section class="directory-column" aria-labelledby={headingId}>
+<section
+  class:list={["directory-column", { "directory-column-entry-only": !showsEntryDirectory }]}
+  aria-labelledby={headingId}
+>
   <div class="column-heading">
     <span class="column-index" aria-hidden="true">{category.index}</span>
     <h2 id={headingId}><a href={category.path}>{category.label}</a></h2>
   </div>
 
-  <ul class="directory-links">
-    {
-      visibleEntries.map((entry) => {
-        return (
+  {
+    showsEntryDirectory && (
+      <ul class="directory-links">
+        {visibleEntries.map((entry) => (
           <li>
             <a href={getEntryHref(entry)}>{entry.title}</a>
           </li>
-        );
-      })
-    }
-    <li><a class="more-link" href={category.path}>更多</a></li>
-  </ul>
+        ))}
+        <li><a class="more-link" href={category.path}>更多</a></li>
+      </ul>
+    )
+  }
 </section>

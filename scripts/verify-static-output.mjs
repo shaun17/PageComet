@@ -3,10 +3,16 @@ import { access, lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { TextDecoder } from "node:util";
+import { NOTION_ASSET_EXTENSIONS } from "../src/lib/notion/media-format-extensions.mjs";
 
 const PAGES_MAX_ASSET_BYTES = 25 * 1024 * 1024;
 const SECRET_MANIFEST_MAX_BYTES = 64 * 1024;
 const NOTION_ASSET_REFERENCE_PATTERN = /\/notion-assets\/([^"'()\s<>]+)/g;
+const NOTION_ASSET_FILE_PATTERN = new RegExp(
+  `^([a-f0-9]{64})(${NOTION_ASSET_EXTENSIONS.map((extension) =>
+    extension.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ).join("|")})$`,
+);
 const FORBIDDEN_OUTPUT = [
   {
     name: "Notion 密钥",
@@ -184,7 +190,7 @@ const verifyNotionAssetIntegrity = async (distRoot) => {
   const assetNames = new Set();
   for (const entry of entries) {
     if (!entry.isFile()) throw new Error(`Notion 资源目录包含非普通文件：${entry.name}`);
-    const match = entry.name.match(/^([a-f0-9]{64})\.(?:avif|gif|jpe?g|png|webp|mp4|webm)$/);
+    const match = entry.name.match(NOTION_ASSET_FILE_PATTERN);
     if (!match) throw new Error(`Notion 资源文件名不符合内容哈希规则：${entry.name}`);
 
     const body = await readFile(path.join(assetsRoot, entry.name));
@@ -214,7 +220,7 @@ const verifyNotionAssetReferences = (files, assetNames) => {
       } catch {
         throw new Error(`静态产物 ${file.name} 包含无法解码的 Notion 资源地址`);
       }
-      if (!/^[a-f0-9]{64}\.(?:avif|gif|jpe?g|png|webp|mp4|webm)$/.test(decodedName)) {
+      if (!NOTION_ASSET_FILE_PATTERN.test(decodedName)) {
         throw new Error(`静态产物 ${file.name} 包含无效的 Notion 资源路径：${rawName}`);
       }
       if (!assetNames.has(decodedName)) {

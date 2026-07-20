@@ -55,6 +55,7 @@ const hasMeaningfulContent = (blocks: ContentBlock[]): boolean =>
         hasCells ||
         block.image ||
         block.video ||
+        block.audio ||
         block.url ||
         block.expression ||
         block.title ||
@@ -62,7 +63,7 @@ const hasMeaningfulContent = (blocks: ContentBlock[]): boolean =>
     );
   });
 
-/** 所有已发布条目都会生成站内详情页，因此必须包含实际正文。 */
+/** 所有已发布条目都必须包含可公开展示的正文或媒体。 */
 const validateEntryBody = (entry: ContentEntry): void => {
   if (hasMeaningfulContent(entry.blocks)) return;
   throw new Error(`文章「${entry.title}」没有正文，无法发布`);
