@@ -56,6 +56,7 @@ const feedItems = entries.map((entry) => {
 
               {item.textBlocks.length > 0 && (
                 <>
+                  <p class="journal-entry-a11y-preview" data-journal-a11y-preview hidden />
                   <div
                     id={item.textId}
                     class="journal-entry-copy notion-content"
@@ -92,67 +93,258 @@ const feedItems = entries.map((entry) => {
 </section>
 
 <script>
-  const journalEntries = document.querySelectorAll<HTMLElement>("[data-journal-entry]");
+  import {
+    measureJournalTextCollapse,
+    type JournalTextRect,
+  } from "../lib/journal-fold";
 
-  /** 把 CSS 中的 px/rem 长度换算成像素，保证折叠阈值只有一个来源。 */
-  const readCssLength = (value: string): number => {
-    const amount = Number.parseFloat(value);
-    if (!Number.isFinite(amount)) return 0;
-    return value.trim().endsWith("rem")
-      ? amount * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
-      : amount;
+  const journalEntries = document.querySelectorAll<HTMLElement>("[data-journal-entry]");
+  const COLLAPSED_VISIBLE_LINE_COUNT = 3;
+  const TEXT_LINE_TOLERANCE = 1;
+
+  interface JournalTextNodeLayout {
+    node: Text;
+    rects: JournalTextRect[];
+  }
+
+  interface JournalTextLayout {
+    rects: JournalTextRect[];
+    textNodes: JournalTextNodeLayout[];
+  }
+
+  /** 排除隐藏或脱离正文流的辅助文字，避免链接浮层和读屏副本被误算成可见行。 */
+  const isMeasurableTextNode = (textNode: Node, content: HTMLElement): boolean => {
+    let element = textNode.parentElement;
+    while (element && element !== content) {
+      const style = getComputedStyle(element);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        style.position === "absolute" ||
+        style.position === "fixed"
+      ) {
+        return false;
+      }
+      element = element.parentElement;
+    }
+    return true;
   };
 
-  /** 根据真实渲染高度决定是否显示展开按钮，并保留用户主动展开的状态。 */
+  /** 把浏览器坐标转换成折叠计算所需的稳定数据，并忽略没有面积的片段。 */
+  const readRangeRects = (range: Range): JournalTextRect[] =>
+    Array.from(range.getClientRects())
+      .map((rect) => ({
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      }))
+      .filter(
+        ({ top, bottom, width, height }) =>
+          [top, bottom, width, height].every(Number.isFinite) &&
+          width > 0.5 &&
+          height > 0.5 &&
+          bottom > top,
+      );
+
+  /** 读取真实文字布局，让手动换行、段落和富文本都按视觉行统一计算。 */
+  const readTextLayout = (content: HTMLElement): JournalTextLayout => {
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    const rects: JournalTextRect[] = [];
+    const textNodes: JournalTextNodeLayout[] = [];
+    let textNode = walker.nextNode();
+    while (textNode) {
+      if (textNode.textContent?.trim() && isMeasurableTextNode(textNode, content)) {
+        range.selectNodeContents(textNode);
+        const nodeRects = readRangeRects(range);
+        if (nodeRects.length > 0) {
+          rects.push(...nodeRects);
+          textNodes.push({ node: textNode as Text, rects: nodeRects });
+        }
+      }
+      textNode = walker.nextNode();
+    }
+    return { rects, textNodes };
+  };
+
+  /** 找到一个跨行文字节点在第三行末尾之前的最后字符位置。 */
+  const findPreviewEndOffset = (node: Text, cutoffBottom: number): number => {
+    const range = document.createRange();
+    let lowerBound = 0;
+    let upperBound = node.data.length;
+    while (lowerBound < upperBound) {
+      const candidate = Math.ceil((lowerBound + upperBound) / 2);
+      range.setStart(node, 0);
+      range.setEnd(node, candidate);
+      const candidateRects = readRangeRects(range);
+      const staysAboveCutoff =
+        candidateRects.length > 0 &&
+        candidateRects.every((rect) => rect.bottom <= cutoffBottom + TEXT_LINE_TOLERANCE);
+      if (staysAboveCutoff) {
+        lowerBound = candidate;
+      } else {
+        upperBound = candidate - 1;
+      }
+    }
+    return lowerBound;
+  };
+
+  /** 生成与三行视觉预览对应的纯文本，让折叠态对读屏和键盘同样成立。 */
+  const createAccessiblePreview = (
+    textNodes: JournalTextNodeLayout[],
+    cutoffBottom: number,
+  ): string => {
+    const pieces: string[] = [];
+    let previousBlock: Element | null = null;
+    for (const { node, rects } of textNodes) {
+      const firstTop = Math.min(...rects.map((rect) => rect.top));
+      if (firstTop > cutoffBottom + TEXT_LINE_TOLERANCE) continue;
+
+      const lastBottom = Math.max(...rects.map((rect) => rect.bottom));
+      const endOffset =
+        lastBottom <= cutoffBottom + TEXT_LINE_TOLERANCE
+          ? node.data.length
+          : findPreviewEndOffset(node, cutoffBottom);
+      if (endOffset <= 0) continue;
+
+      const block = node.parentElement?.closest(
+        "p, li, h2, h3, h4, blockquote, figcaption, summary, td, th, pre",
+      );
+      if (pieces.length > 0 && block !== previousBlock) pieces.push(" ");
+      pieces.push(node.data.slice(0, endOffset));
+      previousBlock = block ?? null;
+    }
+
+    const preview = pieces.join("").replaceAll(/\s+/g, " ").trim();
+    return preview ? `${preview}…` : "内容已折叠。";
+  };
+
+  /** 切换完整富文本的交互与读屏可见性，避免焦点进入视觉裁掉的链接。 */
+  const setJournalContentExpanded = (
+    content: HTMLElement,
+    preview: HTMLElement,
+    expanded: boolean,
+  ) => {
+    content.toggleAttribute("inert", !expanded);
+    if (expanded) {
+      content.removeAttribute("aria-hidden");
+    } else {
+      content.setAttribute("aria-hidden", "true");
+    }
+    preview.hidden = expanded;
+  };
+
+  /** 根据真实文字行决定是否折叠，并保留用户主动展开的状态。 */
   const refreshJournalEntry = (entry: HTMLElement) => {
     const content = entry.querySelector<HTMLElement>("[data-journal-text]");
+    const preview = entry.querySelector<HTMLElement>("[data-journal-a11y-preview]");
     const button = entry.querySelector<HTMLButtonElement>("[data-journal-toggle]");
-    if (!content || !button) return;
+    if (!content || !preview || !button) return;
 
-    const collapseHeight = readCssLength(
-      getComputedStyle(content).getPropertyValue("--journal-collapsed-height"),
+    const preserveFocusedExpansion =
+      button.hidden && content.contains(document.activeElement);
+    const layout = readTextLayout(content);
+    const measurement = measureJournalTextCollapse(
+      layout.rects,
+      content.getBoundingClientRect().top,
+      COLLAPSED_VISIBLE_LINE_COUNT,
     );
-    const overflows = collapseHeight > 0 && content.scrollHeight > collapseHeight + 1;
-    if (!overflows) {
+    if (!measurement.shouldCollapse) {
       content.removeAttribute("data-collapsed");
+      content.style.removeProperty("--journal-collapsed-height");
+      content.style.removeProperty("--journal-fade-height");
       button.hidden = true;
       button.setAttribute("aria-expanded", "false");
       button.textContent = "展开全文";
+      setJournalContentExpanded(content, preview, true);
       return;
     }
 
+    content.style.setProperty(
+      "--journal-collapsed-height",
+      `${Math.ceil(measurement.collapsedHeight)}px`,
+    );
+    content.style.setProperty(
+      "--journal-fade-height",
+      `${Math.ceil(measurement.fadeHeight)}px`,
+    );
+    preview.textContent = createAccessiblePreview(
+      layout.textNodes,
+      content.getBoundingClientRect().top + measurement.collapsedHeight,
+    );
     button.hidden = false;
+    if (preserveFocusedExpansion) {
+      button.setAttribute("aria-expanded", "true");
+      button.textContent = "收起";
+    }
     if (button.getAttribute("aria-expanded") === "true") {
       content.removeAttribute("data-collapsed");
+      setJournalContentExpanded(content, preview, true);
       return;
     }
     content.setAttribute("data-collapsed", "");
+    setJournalContentExpanded(content, preview, false);
   };
 
   for (const entry of journalEntries) {
+    const content = entry.querySelector<HTMLElement>("[data-journal-text]");
+    const preview = entry.querySelector<HTMLElement>("[data-journal-a11y-preview]");
     const button = entry.querySelector<HTMLButtonElement>("[data-journal-toggle]");
     refreshJournalEntry(entry);
-    button?.addEventListener("click", () => {
-      const content = entry.querySelector<HTMLElement>("[data-journal-text]");
-      if (!content) return;
+    if (!content || !preview || !button) continue;
+    button.addEventListener("click", () => {
       const expanded = button.getAttribute("aria-expanded") === "true";
       button.setAttribute("aria-expanded", String(!expanded));
       button.textContent = expanded ? "展开全文" : "收起";
       content.toggleAttribute("data-collapsed", expanded);
+      setJournalContentExpanded(content, preview, !expanded);
     });
+    /** Notion 折叠块只改变高度；状态变化后立即按新布局复算当前条目。 */
+    content.addEventListener("toggle", () => refreshJournalEntry(entry), true);
   }
 
   let resizeFrame = 0;
-  /** 视口变化后统一复算，避免窄屏换行后沿用旧的折叠判断。 */
-  window.addEventListener("resize", () => {
+  /** 合并同一帧内的宽度变化，避免逐条重复测量文字行。 */
+  const scheduleJournalRefresh = () => {
     cancelAnimationFrame(resizeFrame);
     resizeFrame = requestAnimationFrame(() => {
       for (const entry of journalEntries) refreshJournalEntry(entry);
     });
-  });
+  };
+
+  const observedWidths = new WeakMap<Element, number>();
+  const ResizeObserverConstructor = Reflect.get(window, "ResizeObserver") as
+    | typeof ResizeObserver
+    | undefined;
+  if (ResizeObserverConstructor) {
+    const resizeObserver = new ResizeObserverConstructor((records) => {
+      let widthChanged = false;
+      for (const record of records) {
+        const previousWidth = observedWidths.get(record.target);
+        if (
+          previousWidth === undefined ||
+          Math.abs(previousWidth - record.contentRect.width) > 0.5
+        ) {
+          observedWidths.set(record.target, record.contentRect.width);
+          widthChanged = true;
+        }
+      }
+      if (widthChanged) scheduleJournalRefresh();
+    });
+    for (const entry of journalEntries) {
+      const content = entry.querySelector<HTMLElement>("[data-journal-text]");
+      if (!content) continue;
+      observedWidths.set(content, content.getBoundingClientRect().width);
+      resizeObserver.observe(content);
+    }
+  } else {
+    /** 旧浏览器没有 ResizeObserver 时仍在视口变化后重新计算。 */
+    window.addEventListener("resize", scheduleJournalRefresh);
+  }
 
   /** 字体完成加载后再核对一次，消除字体度量变化造成的边界误判。 */
   document.fonts?.ready.then(() => {
-    for (const entry of journalEntries) refreshJournalEntry(entry);
+    scheduleJournalRefresh();
   });
 </script>

@@ -265,6 +265,7 @@ test("builds article indexes and the journal feed", async () => {
   assert.doesNotMatch(journal, /2026\.01\.15|关于周末、街道与慢下来的一段记录。/);
   assert.doesNotMatch(journal, /一条包含多媒体的长流水账|一段城市散步/);
   assert.equal((journal.match(/data-journal-text/g) ?? []).length, 1);
+  assert.equal((journal.match(/data-journal-a11y-preview hidden/g) ?? []).length, 1);
   assert.equal((journal.match(/data-journal-toggle hidden/g) ?? []).length, 1);
   assert.equal(
     (journal.match(/class="journal-entry-attachments notion-content"/g) ?? []).length,
@@ -273,6 +274,25 @@ test("builds article indexes and the journal feed", async () => {
   assert.doesNotMatch(journal, /class="project-links"/);
   assert.match(journal, /<script type="module" src="\/_astro\/[^\"]+\.js"><\/script>/);
   assert.doesNotMatch(journal, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
+
+  const journalScriptPaths = [
+    ...journal.matchAll(/<script type="module" src="([^\"]+\.js)"><\/script>/g),
+  ].map((match) => match[1]);
+  assert.ok(journalScriptPaths.length > 0);
+  const journalScripts = (
+    await Promise.all(
+      journalScriptPaths.map((path) =>
+        readFile(new URL(path.slice(1), buildRoot), "utf8"),
+      ),
+    )
+  ).join("\n");
+  assert.match(journalScripts, /data-journal-a11y-preview/);
+  assert.match(journalScripts, /toggleAttribute\(["'`]inert["'`]/);
+  assert.match(
+    journalScripts,
+    /setAttribute\(["'`]aria-hidden["'`],["'`]true["'`]\)/,
+  );
+  assert.match(journalScripts, /addEventListener\(["'`]toggle["'`]/);
 
   assert.match(journal, /<ul><li>/);
   assert.match(journal, /<blockquote>/);
@@ -435,6 +455,17 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(journalCollapsedRule);
   assert.match(journalCollapsedRule, /max-height:var\(--journal-collapsed-height\)/);
   assert.match(journalCollapsedRule, /overflow:hidden/);
+  assert.match(journalCollapsedRule, /mask-image:linear-gradient/);
+  assert.match(journalCollapsedRule, /var\(--journal-fade-height\)/);
+  assert.doesNotMatch(css, /--journal-collapsed-height:(?:11|12)rem/);
+  assert.match(css, /\.journal-entry-copy\{display:flow-root;position:relative\}/);
+  const journalA11yPreviewRule = css.match(
+    /\.journal-entry-a11y-preview\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(journalA11yPreviewRule);
+  assert.match(journalA11yPreviewRule, /position:absolute/);
+  assert.match(journalA11yPreviewRule, /clip-path:inset\(50%\)/);
+  assert.match(css, /\.journal-entry-copy\[inert\]\{pointer-events:none;user-select:none\}/);
   const journalAttachmentMediaRule = css.match(
     /\.journal-entry-attachments \.notion-image,\.journal-entry-attachments \.notion-media\{([^}]*)\}/,
   )?.[1];

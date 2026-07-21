@@ -37,25 +37,48 @@
 }
 
 .journal-entry-copy {
-  --journal-collapsed-height: 12rem;
+  display: flow-root;
   position: relative;
+}
+
+/* 折叠态用纯文本摘要进入无障碍树，视觉正文则保持原有三行排版。 */
+.journal-entry-a11y-preview {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
+.journal-entry-a11y-preview[hidden] {
+  display: none;
 }
 
 .journal-entry-copy[data-collapsed] {
   max-height: var(--journal-collapsed-height);
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--journal-fade-height)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--journal-fade-height)),
+    transparent 100%
+  );
 }
 
-/* 渐隐只表示后面还有文字，不拦截正文中的选择、链接或按钮。 */
-.journal-entry-copy[data-collapsed]::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 4rem;
-  background: linear-gradient(to bottom, transparent, var(--page-background));
-  content: "";
+.journal-entry-copy[inert] {
   pointer-events: none;
+  user-select: none;
 }
 
 .journal-entry-copy > :last-child,
@@ -132,7 +155,6 @@
   }
 
   .journal-entry-copy {
-    --journal-collapsed-height: 11rem;
     font-size: 1rem;
   }
 }
