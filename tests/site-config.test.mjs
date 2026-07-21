@@ -7,12 +7,13 @@ import { defineSiteConfig } from "../src/config/define-site-config.mjs";
 /** 复制当前有效配置，测试错误输入时不会修改共享的冻结对象。 */
 const createConfig = () => structuredClone(siteConfig);
 
-/** 示例配置、环境模板和 README 必须共同覆盖当前双数据源契约。 */
-test("keeps the reusable configuration and README contract complete", async () => {
-  const [gitignore, environmentExample, readme] = await Promise.all([
+/** 示例配置、环境模板与两份入口文档必须共同覆盖当前双数据源契约。 */
+test("keeps the reusable configuration and setup documentation complete", async () => {
+  const [gitignore, environmentExample, readme, agentGuide] = await Promise.all([
     readFile(new URL("../.gitignore", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/agent-deploy.md", import.meta.url), "utf8"),
   ]);
 
   assert.equal(siteConfig.origin, "https://portfolio.example.com");
@@ -55,6 +56,23 @@ test("keeps the reusable configuration and README contract complete", async () =
   }
   assert.match(readme, /career.*works.*writing.*journal/s);
   assert.match(readme, /私有 Form/);
+  assert.match(readme, /https:\/\/github\.com\/shaun17\/PageComet/);
+  assert.match(readme, /docs\/agent-deploy\.md/);
+  assert.match(readme, /只在 Notion、Cloudflare 授权和个人资料处/);
+  for (const command of [
+    "npm ci",
+    "npm test",
+    "npm run validate:site-config",
+    "npm run build",
+    "npm run verify:dist",
+    "npm run pages:create",
+    "npm run deploy",
+  ]) {
+    assert.match(agentGuide, new RegExp(command.replaceAll(" ", "\\s+")));
+  }
+  assert.match(agentGuide, /不得无条件覆盖/);
+  assert.match(agentGuide, /不要把值打印出来/);
+  assert.match(agentGuide, /只有在所有者要求提交或推送时/);
 });
 
 test("accepts and deeply freezes a valid site configuration", () => {
