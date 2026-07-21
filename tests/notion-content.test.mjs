@@ -76,16 +76,26 @@ const richTextProperty = (type, value) => ({
 });
 
 /** 构造同时包含项目地址和仓库地址的最小已发布页面，并允许覆盖分类。 */
-const createPublishedPage = (repositoryUrl, categoryName = "个人作品") => ({
+const createPublishedPage = (
+  repositoryUrl,
+  categoryName = "个人作品",
+  id = "project-entry",
+) => ({
   object: "page",
-  id: "project-entry",
+  id,
   created_time: "2026-07-19T00:00:00.000Z",
   last_edited_time: "2026-07-19T01:00:00.000Z",
   url: "https://www.notion.so/project-entry",
   cover: null,
   properties: {
-    标题: richTextProperty("title", "Atlas Notes"),
-    Slug: richTextProperty("rich_text", "atlas-notes"),
+    标题: richTextProperty(
+      "title",
+      id === "project-entry" ? "Atlas Notes" : `Atlas Notes ${id}`,
+    ),
+    Slug: richTextProperty(
+      "rich_text",
+      id === "project-entry" ? "atlas-notes" : `atlas-notes-${id}`,
+    ),
     分类: { type: "select", select: { name: categoryName } },
     状态: { type: "select", select: { name: "已发布" } },
     摘要: richTextProperty("rich_text", "一个开源 Web 项目。"),
@@ -220,6 +230,45 @@ test("does not require the migrated journal option in the article schema", () =>
   assert.doesNotThrow(() =>
     validateContentSchema(createDataSource(), resolvePropertyNames()),
   );
+});
+
+test("reads independent article block trees concurrently", async () => {
+  let startedCount = 0;
+  let releaseReads;
+  const readGate = new Promise((resolve) => {
+    releaseReads = resolve;
+  });
+  const pages = [
+    createPublishedPage(null, "个人作品", "one"),
+    createPublishedPage(null, "个人作品", "two"),
+  ];
+  const client = {
+    retrieveDataSource: async () => createDataSource(),
+    queryDataSource: async () => pages,
+    listBlockChildren: async (pageId) => {
+      startedCount += 1;
+      await readGate;
+      return [
+        {
+          object: "block",
+          id: `${pageId}-paragraph`,
+          type: "paragraph",
+          has_children: false,
+          paragraph: {
+            rich_text: richTextProperty("rich_text", "正文").rich_text,
+          },
+        },
+      ];
+    },
+  };
+
+  const pending = loadPublishedContent({ client, media: false });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(startedCount, 2);
+  releaseReads();
+
+  const entries = await pending;
+  assert.equal(entries.length, 2);
 });
 
 test("rejects the wrong GitHub repository property type", () => {

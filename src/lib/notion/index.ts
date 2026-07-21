@@ -1,6 +1,15 @@
-export { localizeContentEntryMedia } from "./assets";
+export { localizeContentEntriesMedia, localizeContentEntryMedia } from "./assets";
 export { normalizeNotionBlock, readNotionBlockTree } from "./blocks";
-export { NotionApiError, NotionClient, NOTION_API_VERSION } from "./client";
+export {
+  createNotionRequestScheduler,
+  NotionApiError,
+  NotionClient,
+  NOTION_API_VERSION,
+} from "./client";
+export type {
+  NotionRequestScheduler,
+  NotionRequestSchedulerOptions,
+} from "./client";
 export {
   clearPublishedContentCache,
   getPublishedContent,

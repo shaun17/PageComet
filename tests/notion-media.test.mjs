@@ -6,13 +6,15 @@ import { fileURLToPath } from "node:url";
 import test, { after, before } from "node:test";
 import { createTestViteServer } from "./vite-test-server.mjs";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
-let vite, localizeContentEntryMediaForTest, normalizeNotionBlock;
+let vite;
+let localizeContentEntriesMediaForTest;
+let localizeContentEntryMediaForTest;
+let normalizeNotionBlock;
 /** 使用项目自身的 Vite 配置加载 TypeScript，确保测试与 Astro 构建采用同一规则。 */
 before(async () => {
   vite = await createTestViteServer(projectRoot);
-  ({ localizeContentEntryMediaForTest } = await vite.ssrLoadModule(
-    "/src/lib/notion/assets.ts",
-  ));
+  ({ localizeContentEntriesMediaForTest, localizeContentEntryMediaForTest } =
+    await vite.ssrLoadModule("/src/lib/notion/assets.ts"));
   ({ normalizeNotionBlock } = await vite.ssrLoadModule("/src/lib/notion/blocks.ts"));
 });
 /** 测试完成后关闭文件监听器，避免 Node 进程无法退出。 */
@@ -189,6 +191,63 @@ test("localizes GIF, uploaded video, and uploaded audio without changing bytes",
       new Uint8Array(await readFile(path.join(outputDirectory, path.basename(audio.audio.url)))),
       audioBytes,
     );
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test("localizes site media with bounded concurrency", async () => {
+  const outputDirectory = await mkdtemp(path.join(tmpdir(), "wenren-media-pool-"));
+  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
+  let activeCount = 0;
+  let maximumActiveCount = 0;
+  let startedCount = 0;
+  let releaseDownloads;
+  const downloadGate = new Promise((resolve) => {
+    releaseDownloads = resolve;
+  });
+  const entries = [1, 2, 3].map((index) =>
+    createEntry([
+      {
+        id: `image-${index}`,
+        type: "image",
+        richText: [],
+        children: [],
+        image: {
+          url: `https://files.example/demo-${index}.gif`,
+          alt: `图片 ${index}`,
+          source: "notion",
+          expiryTime: null,
+          localized: false,
+        },
+      },
+    ]),
+  );
+
+  try {
+    const pending = localizeContentEntriesMediaForTest(entries, {
+      outputDirectory,
+      concurrency: 2,
+      fetchImpl: async () => {
+        activeCount += 1;
+        startedCount += 1;
+        maximumActiveCount = Math.max(maximumActiveCount, activeCount);
+        await downloadGate;
+        activeCount -= 1;
+        return new Response(gifBytes, { headers: { "Content-Type": "image/gif" } });
+      },
+    });
+
+    // 前两个下载占满任务池后，第三个必须等待任意槽位释放。
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(startedCount, 2);
+    assert.equal(maximumActiveCount, 2);
+    releaseDownloads();
+
+    const localized = await pending;
+    assert.equal(startedCount, 3);
+    assert.equal(maximumActiveCount, 2);
+    assert.equal(localized.every((entry) => entry.blocks[0].image.localized), true);
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });
   }

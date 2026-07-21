@@ -7,6 +7,9 @@ import type {
 
 const NOTION_API_BASE_URL = "https://api.notion.com/v1";
 export const NOTION_API_VERSION = "2026-03-11";
+// Notion 官方限制为每个连接平均每秒 3 次请求，340 ms 间隔留出少量调度余量。
+const DEFAULT_REQUEST_INTERVAL_MS = 340;
+const DEFAULT_REQUEST_CONCURRENCY = 3;
 
 /** Notion API 错误保留状态码和请求 ID，便于定位构建失败。 */
 export class NotionApiError extends Error {
@@ -27,7 +30,77 @@ export interface NotionClientOptions {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   maxRetries?: number;
+  scheduler?: NotionRequestScheduler;
 }
+
+export interface NotionRequestScheduler {
+  schedule<T>(task: () => Promise<T>): Promise<T>;
+}
+
+export interface NotionRequestSchedulerOptions {
+  intervalMs?: number;
+  concurrency?: number;
+}
+
+/**
+ * 创建共享请求队列：请求按固定间隔启动，同时允许慢请求与后续请求重叠。
+ * 两个数据源共用同一实例，才能遵守同一 Notion 连接的总速率限制。
+ */
+export const createNotionRequestScheduler = (
+  options: NotionRequestSchedulerOptions = {},
+): NotionRequestScheduler => {
+  const intervalMs = options.intervalMs ?? DEFAULT_REQUEST_INTERVAL_MS;
+  const concurrency = options.concurrency ?? DEFAULT_REQUEST_CONCURRENCY;
+  if (!Number.isInteger(intervalMs) || intervalMs < 0) {
+    throw new Error("Notion 请求间隔必须是非负整数");
+  }
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 10) {
+    throw new Error("Notion 请求并发数必须是 1-10 的整数");
+  }
+
+  let activeCount = 0;
+  let nextStartAt = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const queue: Array<() => void> = [];
+
+  /** 在速率和并发均有余量时启动队首任务。 */
+  const drain = (): void => {
+    if (timer || activeCount >= concurrency || queue.length === 0) return;
+
+    const delay = Math.max(0, nextStartAt - Date.now());
+    if (delay > 0) {
+      timer = setTimeout(() => {
+        timer = null;
+        drain();
+      }, delay);
+      return;
+    }
+
+    const start = queue.shift()!;
+    activeCount += 1;
+    nextStartAt = Date.now() + intervalMs;
+    start();
+    drain();
+  };
+
+  return {
+    /** 将真实网络请求排入共享队列，失败也会可靠释放并发槽位。 */
+    schedule<T>(task: () => Promise<T>): Promise<T> {
+      return new Promise<T>((resolve, reject) => {
+        queue.push(() => {
+          void Promise.resolve()
+            .then(task)
+            .then(resolve, reject)
+            .finally(() => {
+              activeCount -= 1;
+              drain();
+            });
+        });
+        drain();
+      });
+    },
+  };
+};
 
 /** 将 Retry-After 转为毫秒，并限制异常响应带来的超长等待。 */
 const readRetryDelay = (response: Response, attempt: number): number => {
@@ -67,6 +140,7 @@ export class NotionClient {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
+  private readonly scheduler: NotionRequestScheduler;
 
   constructor(options: NotionClientOptions) {
     if (!options.token.trim() || !options.dataSourceId.trim()) {
@@ -78,6 +152,7 @@ export class NotionClient {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
     this.maxRetries = options.maxRetries ?? 3;
+    this.scheduler = options.scheduler ?? createNotionRequestScheduler();
   }
 
   /** 从构建环境创建客户端，缺少凭据时立即终止并给出明确提示。 */
@@ -166,16 +241,19 @@ export class NotionClient {
   /** 发起单次 API 请求；仅对限流和服务端临时错误进行有界重试。 */
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
-      const response = await this.fetchImpl(`${NOTION_API_BASE_URL}${path}`, {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          "Notion-Version": NOTION_API_VERSION,
-          ...(init.body ? { "Content-Type": "application/json" } : {}),
-          ...init.headers,
-        },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
+      // 超时从真实发起时开始计算，排队时间不会挤占单次请求预算。
+      const response = await this.scheduler.schedule(() =>
+        this.fetchImpl(`${NOTION_API_BASE_URL}${path}`, {
+          ...init,
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            "Notion-Version": NOTION_API_VERSION,
+            ...(init.body ? { "Content-Type": "application/json" } : {}),
+            ...init.headers,
+          },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        }),
+      );
 
       if (response.ok) return (await response.json()) as T;
 

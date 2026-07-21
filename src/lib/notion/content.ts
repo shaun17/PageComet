@@ -1,4 +1,4 @@
-import { localizeContentEntryMedia } from "./assets";
+import { localizeContentEntriesMedia } from "./assets";
 import { readNotionBlockTree } from "./blocks";
 import { NotionClient } from "./client";
 import {
@@ -106,23 +106,24 @@ export const loadPublishedContent = async (
       "Notion 没有查询到任何已发布内容，已阻止生成空站；确需空站时设置 ALLOW_EMPTY_SITE=true",
     );
   }
-  const entries: ContentEntry[] = [];
-
-  for (const page of pages) {
-    const blocks = await readNotionBlockTree(client, page.id, {
-      maxDepth: options.maxBlockDepth,
-    });
-    const entry = normalizeContentPage(page, blocks, names);
-    validateEntryBody(entry);
-    entries.push(
-      options.media === false
-        ? entry
-        : await localizeContentEntryMedia(entry, options.media),
-    );
-  }
+  // 页面块树互不依赖；请求仍统一经过 NotionClient 的限流队列。
+  const entries = await Promise.all(
+    pages.map(async (page) => {
+      const blocks = await readNotionBlockTree(client, page.id, {
+        maxDepth: options.maxBlockDepth,
+      });
+      const entry = normalizeContentPage(page, blocks, names);
+      validateEntryBody(entry);
+      return entry;
+    }),
+  );
 
   assertUniqueSlugs(entries);
-  return sortContentEntries(entries);
+  const localizedEntries =
+    options.media === false
+      ? entries
+      : await localizeContentEntriesMedia(entries, options.media);
+  return sortContentEntries(localizedEntries);
 };
 
 let cachedPublishedContent: Promise<ContentEntry[]> | null = null;

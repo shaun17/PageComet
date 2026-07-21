@@ -127,7 +127,7 @@ export interface ReadBlockTreeOptions {
   maxDepth?: number;
 }
 
-/** 递归读取完整块树；按顺序请求可显著降低构建时触发 Notion 限流的概率。 */
+/** 递归读取完整块树；共享请求队列负责总速率，独立子树可安全并行。 */
 export const readNotionBlockTree = async (
   client: NotionClient,
   parentId: string,
@@ -140,16 +140,14 @@ export const readNotionBlockTree = async (
   const readChildren = async (blockId: string, depth: number): Promise<ContentBlock[]> => {
     if (depth > maxDepth) throw new Error(`Notion 内容嵌套超过 ${maxDepth} 层：${blockId}`);
     const rawBlocks = await client.listBlockChildren(blockId);
-    const blocks: ContentBlock[] = [];
-
-    for (const raw of rawBlocks) {
-      if (visited.has(raw.id)) throw new Error(`Notion 块出现循环引用：${raw.id}`);
-      visited.add(raw.id);
-      const children = raw.has_children ? await readChildren(raw.id, depth + 1) : [];
-      blocks.push(normalizeNotionBlock(raw, children));
-    }
-
-    return blocks;
+    return Promise.all(
+      rawBlocks.map(async (raw) => {
+        if (visited.has(raw.id)) throw new Error(`Notion 块出现循环引用：${raw.id}`);
+        visited.add(raw.id);
+        const children = raw.has_children ? await readChildren(raw.id, depth + 1) : [];
+        return normalizeNotionBlock(raw, children);
+      }),
+    );
   };
 
   return readChildren(parentId, 0);

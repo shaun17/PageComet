@@ -6,6 +6,7 @@ import { createTestViteServer } from "./vite-test-server.mjs";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite;
 let NotionClient;
+let createNotionRequestScheduler;
 let createPublishedContentQuery;
 let resolvePropertyNames;
 
@@ -13,7 +14,8 @@ let resolvePropertyNames;
 before(async () => {
   vite = await createTestViteServer(projectRoot);
 
-  ({ NotionClient } = await vite.ssrLoadModule("/src/lib/notion/client.ts"));
+  ({ NotionClient, createNotionRequestScheduler } =
+    await vite.ssrLoadModule("/src/lib/notion/client.ts"));
   ({ createPublishedContentQuery, resolvePropertyNames } =
     await vite.ssrLoadModule("/src/lib/notion/schema.ts"));
 });
@@ -97,4 +99,35 @@ test("excludes trashed or archived blocks from article content", async () => {
   const blocks = await client.listBlockChildren("article-page");
 
   assert.deepEqual(blocks.map(({ id }) => id), ["visible"]);
+});
+
+test("shared Notion scheduler enforces its global concurrency limit", async () => {
+  const scheduler = createNotionRequestScheduler({ intervalMs: 0, concurrency: 2 });
+  const started = [];
+  const releases = [];
+
+  /** 创建受测试控制的请求，用于精确观察队列何时启动下一项。 */
+  const createTask = (id) =>
+    scheduler.schedule(
+      () =>
+        new Promise((resolve) => {
+          started.push(id);
+          releases.push(resolve);
+        }),
+    );
+
+  const tasks = [createTask(1), createTask(2), createTask(3), createTask(4)];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, [1, 2]);
+
+  releases.shift()(1);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, [1, 2, 3]);
+
+  releases.shift()(2);
+  releases.shift()(3);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, [1, 2, 3, 4]);
+  releases.shift()(4);
+  assert.deepEqual(await Promise.all(tasks), [1, 2, 3, 4]);
 });

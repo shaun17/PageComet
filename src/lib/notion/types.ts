@@ -175,6 +175,7 @@ export interface MediaLocalizationOptions {
   maxImageBytes?: number;
   maxVideoBytes?: number;
   maxAudioBytes?: number;
+  concurrency?: number;
   localizeExternalImages?: boolean;
   localizeExternalVideos?: boolean;
   localizeExternalAudios?: boolean;

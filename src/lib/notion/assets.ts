@@ -25,6 +25,9 @@ const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 // Cloudflare Pages 单个静态文件上限为 25 MiB，构建阶段提前给出明确错误。
 const DEFAULT_MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 const DEFAULT_MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+// 有界并发兼顾下载速度与构建内存；单个媒体最多可占用 25 MiB。
+const DEFAULT_MEDIA_CONCURRENCY = 3;
+const MAX_MEDIA_CONCURRENCY = 6;
 
 interface ResolvedMediaLocalizationOptions {
   outputDirectory: string;
@@ -43,6 +46,57 @@ interface ResolvedMediaLocalizationOptions {
 interface MediaLocalizationTestOptions extends MediaLocalizationOptions {
   fetchImpl: typeof fetch;
 }
+
+interface MediaLocalizationRuntime {
+  options: ResolvedMediaLocalizationOptions;
+  runDownload: <T extends ContentMedia>(media: T, kind: MediaKind) => Promise<T>;
+}
+
+/** 校验媒体并发配置，避免错误配置造成无界内存占用。 */
+const resolveMediaConcurrency = (value: number | undefined): number => {
+  const concurrency = value ?? DEFAULT_MEDIA_CONCURRENCY;
+  if (
+    !Number.isInteger(concurrency) ||
+    concurrency < 1 ||
+    concurrency > MAX_MEDIA_CONCURRENCY
+  ) {
+    throw new Error(`媒体下载并发数必须是 1-${MAX_MEDIA_CONCURRENCY} 的整数`);
+  }
+  return concurrency;
+};
+
+/** 创建轻量任务池，确保整个站点同时下载的媒体数量不超过上限。 */
+const createTaskLimiter = (concurrency: number) => {
+  let activeCount = 0;
+  const queue: Array<() => void> = [];
+
+  /** 填满可用槽位；任务结束时再次调度，避免唤醒等待者时发生抢占。 */
+  const drain = (): void => {
+    while (activeCount < concurrency && queue.length > 0) {
+      activeCount += 1;
+      queue.shift()!();
+    }
+  };
+
+  /** 将任务加入队列，并在成功或失败后可靠释放槽位。 */
+  const run = <T>(task: () => Promise<T>): Promise<T> => {
+    const result = new Promise<T>((resolve, reject) => {
+      queue.push(() => {
+        void Promise.resolve()
+          .then(task)
+          .then(resolve, reject)
+          .finally(() => {
+            activeCount -= 1;
+            drain();
+          });
+      });
+    });
+    drain();
+    return result;
+  };
+
+  return run;
+};
 
 /** 在读取响应流时执行硬性大小限制，避免异常资源耗尽构建内存。 */
 const readLimitedBody = async (
@@ -186,37 +240,42 @@ const downloadMedia = async <T extends ContentMedia>(
 /** 递归本地化正文中的图片、视频与音频，并保持块对象不可变。 */
 const localizeBlocks = async (
   blocks: ContentBlock[],
-  options: ResolvedMediaLocalizationOptions,
-): Promise<ContentBlock[]> => {
-  const localized: ContentBlock[] = [];
-  for (const block of blocks) {
-    const children = await localizeBlocks(block.children, options);
-    const shouldDownloadImage =
-      block.image?.source === "notion" || (options.localizeExternalImages && !!block.image);
-    const shouldDownloadVideo =
-      block.video?.source === "notion" || (options.localizeExternalVideos && !!block.video);
-    const shouldDownloadAudio =
-      block.audio?.source === "notion" || (options.localizeExternalAudios && !!block.audio);
-    const image = shouldDownloadImage
-      ? await downloadMedia(block.image!, "image", options)
-      : block.image;
-    const video = shouldDownloadVideo
-      ? await downloadMedia(block.video!, "video", options)
-      : block.video;
-    const audio = shouldDownloadAudio
-      ? await downloadMedia(block.audio!, "audio", options)
-      : block.audio;
-    localized.push({ ...block, children, image, video, audio });
-  }
-  return localized;
-};
+  runtime: MediaLocalizationRuntime,
+): Promise<ContentBlock[]> =>
+  Promise.all(
+    blocks.map(async (block) => {
+      const shouldDownloadImage =
+        block.image?.source === "notion" ||
+        (runtime.options.localizeExternalImages && !!block.image);
+      const shouldDownloadVideo =
+        block.video?.source === "notion" ||
+        (runtime.options.localizeExternalVideos && !!block.video);
+      const shouldDownloadAudio =
+        block.audio?.source === "notion" ||
+        (runtime.options.localizeExternalAudios && !!block.audio);
+      // 子树和当前块媒体都进入同一个任务池，既并行处理又共享全站并发上限。
+      const [children, image, video, audio] = await Promise.all([
+        localizeBlocks(block.children, runtime),
+        shouldDownloadImage
+          ? runtime.runDownload(block.image!, "image")
+          : block.image,
+        shouldDownloadVideo
+          ? runtime.runDownload(block.video!, "video")
+          : block.video,
+        shouldDownloadAudio
+          ? runtime.runDownload(block.audio!, "audio")
+          : block.audio,
+      ]);
+      return { ...block, children, image, video, audio };
+    }),
+  );
 
-/** 使用确定的远端抓取器本地化媒体，生产与离线测试共享完整校验和写入流程。 */
-const localizeContentEntryMediaInternal = async <T extends RenderableContentEntry>(
-  entry: T,
+/** 使用一个远端连接池批量本地化条目，生产与离线测试共享完整校验和写入流程。 */
+const localizeContentEntriesMediaInternal = async <T extends RenderableContentEntry>(
+  entries: T[],
   options: MediaLocalizationOptions,
   remoteFetcher: PublicRemoteFetcher,
-): Promise<T> => {
+): Promise<T[]> => {
   const resolvedOptions: ResolvedMediaLocalizationOptions = {
     outputDirectory: options.outputDirectory ?? resolveDefaultOutputDirectory(),
     publicPath: options.publicPath ?? "/notion-assets",
@@ -230,34 +289,74 @@ const localizeContentEntryMediaInternal = async <T extends RenderableContentEntr
     maxRedirects: options.maxRedirects ?? 5,
     requestTimeoutMs: options.requestTimeoutMs ?? 10_000,
   };
+  const limitTask = createTaskLimiter(resolveMediaConcurrency(options.concurrency));
+  const inFlightDownloads = new Map<string, Promise<ContentMedia>>();
+
+  /** 相同媒体只下载一次，并把所有真实下载统一放入有界任务池。 */
+  const runDownload = <TMedia extends ContentMedia>(
+    media: TMedia,
+    kind: MediaKind,
+  ): Promise<TMedia> => {
+    // 图片替代文本属于展示语义，纳入键值可避免同地址不同说明互相覆盖。
+    const semanticSuffix = "alt" in media ? `:${String(media.alt)}` : "";
+    const key = `${kind}:${media.url}${semanticSuffix}`;
+    const existing = inFlightDownloads.get(key);
+    if (existing) return existing as Promise<TMedia>;
+
+    const pending = limitTask(() => downloadMedia(media, kind, resolvedOptions));
+    inFlightDownloads.set(key, pending);
+    return pending;
+  };
+
+  const runtime: MediaLocalizationRuntime = { options: resolvedOptions, runDownload };
   try {
-    const shouldLocalizeCover =
-      entry.cover?.source === "notion" ||
-      (resolvedOptions.localizeExternalImages && !!entry.cover);
-    const cover = shouldLocalizeCover
-      ? await downloadMedia(entry.cover!, "image", resolvedOptions)
-      : entry.cover;
-    const blocks = await localizeBlocks(entry.blocks, resolvedOptions);
-    return { ...entry, cover, blocks };
+    return await Promise.all(
+      entries.map(async (entry) => {
+        const shouldLocalizeCover =
+          entry.cover?.source === "notion" ||
+          (resolvedOptions.localizeExternalImages && !!entry.cover);
+        const [cover, blocks] = await Promise.all([
+          shouldLocalizeCover
+            ? runDownload(entry.cover!, "image")
+            : entry.cover,
+          localizeBlocks(entry.blocks, runtime),
+        ]);
+        return { ...entry, cover, blocks };
+      }),
+    );
   } finally {
     await remoteFetcher.close();
   }
 };
 
-/** 将 ContentEntry 内所有临时媒体通过安全公网连接转存到 Astro 静态资源目录。 */
+/** 将多个条目的临时媒体通过一个安全公网连接池转存到 Astro 静态资源目录。 */
+export const localizeContentEntriesMedia = async <T extends RenderableContentEntry>(
+  entries: T[],
+  options: MediaLocalizationOptions = {},
+): Promise<T[]> =>
+  localizeContentEntriesMediaInternal(entries, options, createPublicRemoteFetcher());
+
+/** 保留单条入口兼容性，内部仍复用批量本地化的安全边界。 */
 export const localizeContentEntryMedia = async <T extends RenderableContentEntry>(
   entry: T,
   options: MediaLocalizationOptions = {},
-): Promise<T> =>
-  localizeContentEntryMediaInternal(entry, options, createPublicRemoteFetcher());
+): Promise<T> => (await localizeContentEntriesMedia([entry], options))[0]!;
+
+/** 仅供离线测试批量注入固定媒体响应，不会被正式内容构建调用。 */
+export const localizeContentEntriesMediaForTest = async <
+  T extends RenderableContentEntry,
+>(
+  entries: T[],
+  options: MediaLocalizationTestOptions,
+): Promise<T[]> =>
+  localizeContentEntriesMediaInternal(
+    entries,
+    options,
+    createUnsafeTestRemoteFetcher(options.fetchImpl),
+  );
 
 /** 仅供离线测试注入固定媒体响应，不会被正式内容构建调用。 */
 export const localizeContentEntryMediaForTest = async <T extends RenderableContentEntry>(
   entry: T,
   options: MediaLocalizationTestOptions,
-): Promise<T> =>
-  localizeContentEntryMediaInternal(
-    entry,
-    options,
-    createUnsafeTestRemoteFetcher(options.fetchImpl),
-  );
+): Promise<T> => (await localizeContentEntriesMediaForTest([entry], options))[0]!;

@@ -1,6 +1,6 @@
 import { readJournalCalendarDate } from "../journal-time";
 import type { NotionDataSourceResponse, NotionPageResponse } from "./api-types";
-import { localizeContentEntryMedia } from "./assets";
+import { localizeContentEntriesMedia } from "./assets";
 import { NotionClient } from "./client";
 import { MEDIA_FORMAT_EXTENSIONS } from "./media-format-extensions.mjs";
 import type {
@@ -273,15 +273,12 @@ export const loadJournalContent = async (
   const names = resolveJournalPropertyNames(options.properties);
   validateJournalSchema(await client.retrieveDataSource(), names);
   const pages = await client.queryDataSource(createVisibleJournalQuery(names));
-  const entries: JournalEntry[] = [];
-  for (const page of pages) {
-    if (readCheckboxProperty(getPageProperty(page, names.hidden))) continue;
-    const entry = normalizeJournalPage(page, names);
-    entries.push(
-      options.media === false
-        ? entry
-        : await localizeContentEntryMedia(entry, options.media),
-    );
-  }
-  return sortJournalEntries(entries, options.timeZone ?? "UTC");
+  const entries = pages
+    .filter((page) => !readCheckboxProperty(getPageProperty(page, names.hidden)))
+    .map((page) => normalizeJournalPage(page, names));
+  const localizedEntries =
+    options.media === false
+      ? entries
+      : await localizeContentEntriesMedia(entries, options.media);
+  return sortJournalEntries(localizedEntries, options.timeZone ?? "UTC");
 };

@@ -5,7 +5,13 @@ import type {
   JournalEntry,
   RenderableContentEntry,
 } from "../lib/notion";
-import { loadJournalContent, loadPublishedContent } from "../lib/notion";
+import {
+  createNotionRequestScheduler,
+  localizeContentEntriesMedia,
+  loadJournalContent,
+  loadPublishedContent,
+  NotionClient,
+} from "../lib/notion";
 import { validateSiteContent } from "./content-validation";
 import { rewriteInternalLinks } from "./internal-links";
 import { enrichContentLinkPreviews } from "./link-preview";
@@ -87,20 +93,32 @@ const loadSiteContentBundle = async (): Promise<SiteContentBundle> => {
     );
   }
 
+  // 两个数据源使用同一请求队列，确保连接级总速率不超过 Notion 官方限制。
+  const scheduler = createNotionRequestScheduler();
   const [articles, journals] = await Promise.all([
     loadPublishedContent({
-      token,
-      dataSourceId,
-      media: { localizeExternalImages: true },
+      client: new NotionClient({ token, dataSourceId, scheduler }),
+      media: false,
     }),
     loadJournalContent({
-      token,
-      dataSourceId: journalDataSourceId,
-      media: { localizeExternalImages: true },
+      client: new NotionClient({
+        token,
+        dataSourceId: journalDataSourceId,
+        scheduler,
+      }),
+      media: false,
       timeZone: siteConfig.timeZone,
     }),
   ]);
-  return prepareSiteContent(articles, journals);
+  // 全站媒体共用一个 DNS、TLS 和连接池，并以 3 路并发缩短下载关键路径。
+  const localized = await localizeContentEntriesMedia<ContentEntry | JournalEntry>(
+    [...articles, ...journals],
+    { localizeExternalImages: true, concurrency: 3 },
+  );
+  return prepareSiteContent(
+    localized.slice(0, articles.length) as ContentEntry[],
+    localized.slice(articles.length) as JournalEntry[],
+  );
 };
 
 let contentCache: Promise<SiteContentBundle> | null = null;
