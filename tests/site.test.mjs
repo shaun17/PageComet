@@ -462,7 +462,7 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(journalCopyRule);
   assert.match(journalCopyRule, /display:flow-root/);
   assert.match(journalCopyRule, /position:relative/);
-  assert.match(journalCopyRule, /line-height:1\.65/);
+  assert.match(journalCopyRule, /line-height:1\.5/);
   const journalCopyParagraphRule = css.match(
     /\.journal-entry-copy>p\{([^}]*)\}/,
   )?.[1];
