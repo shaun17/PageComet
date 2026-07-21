@@ -39,6 +39,12 @@
 .journal-entry-copy {
   display: flow-root;
   position: relative;
+  line-height: 1.65;
+}
+
+/* 流水账是紧凑时间流，缩短连续文字段落的停顿，不影响长文章正文。 */
+.journal-entry-copy > p {
+  margin-bottom: 0.4em;
 }
 
 /* 折叠态用纯文本摘要进入无障碍树，视觉正文则保持原有三行排版。 */

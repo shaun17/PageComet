@@ -458,7 +458,16 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(journalCollapsedRule, /mask-image:linear-gradient/);
   assert.match(journalCollapsedRule, /var\(--journal-fade-height\)/);
   assert.doesNotMatch(css, /--journal-collapsed-height:(?:11|12)rem/);
-  assert.match(css, /\.journal-entry-copy\{display:flow-root;position:relative\}/);
+  const journalCopyRule = css.match(/\.journal-entry-copy\{([^}]*)\}/)?.[1];
+  assert.ok(journalCopyRule);
+  assert.match(journalCopyRule, /display:flow-root/);
+  assert.match(journalCopyRule, /position:relative/);
+  assert.match(journalCopyRule, /line-height:1\.65/);
+  const journalCopyParagraphRule = css.match(
+    /\.journal-entry-copy>p\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(journalCopyParagraphRule);
+  assert.match(journalCopyParagraphRule, /margin-bottom:\.4em/);
   const journalA11yPreviewRule = css.match(
     /\.journal-entry-a11y-preview\{([^}]*)\}/,
   )?.[1];
