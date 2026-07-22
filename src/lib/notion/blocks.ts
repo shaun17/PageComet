@@ -77,6 +77,10 @@ export const normalizeNotionBlock = (
   const type = normalizeBlockType(raw.type);
   const richText = readRichText(payload.rich_text);
   const block: ContentBlock = { id: raw.id, type, richText, children };
+  // 块 ID 与编辑时间共同标识媒体版本，避免把一小时签名 URL 当作缓存身份。
+  const mediaCacheKey = raw.last_edited_time
+    ? `block:${raw.id}:${raw.last_edited_time}`
+    : undefined;
 
   if (typeof payload.color === "string") block.color = payload.color;
   if (type === "to_do") block.checked = payload.checked === true;
@@ -88,17 +92,17 @@ export const normalizeNotionBlock = (
   if (type === "image") {
     const caption = readCaption(payload);
     block.caption = caption;
-    const image = readFileImage(payload, richTextToPlainText(caption));
+    const image = readFileImage(payload, richTextToPlainText(caption), mediaCacheKey);
     if (image) block.image = image;
   }
   if (type === "video") {
     block.caption = readCaption(payload);
-    const video = readFileMedia(payload);
+    const video = readFileMedia(payload, mediaCacheKey);
     if (video) block.video = video;
   }
   if (type === "audio") {
     block.caption = readCaption(payload);
-    const audio = readFileMedia(payload);
+    const audio = readFileMedia(payload, mediaCacheKey);
     if (audio) block.audio = audio;
   }
   if (["bookmark", "link_preview", "embed", "file", "pdf"].includes(type)) {

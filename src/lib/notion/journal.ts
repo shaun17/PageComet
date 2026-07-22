@@ -202,7 +202,10 @@ export const normalizeJournalPage = (
   const additionalContent = readRichTextPropertyItems(
     getPageProperty(page, names.additionalContent),
   );
-  const attachments = readFileAttachmentsProperty(getPageProperty(page, names.media));
+  const attachments = readFileAttachmentsProperty(
+    getPageProperty(page, names.media),
+    (index) => `page:${page.id}:journal-media:${index}:${page.last_edited_time}`,
+  );
   const embedUrl = normalizeEmbedUrl(
     readUrlProperty(getPageProperty(page, names.embedUrl)),
     page.id,

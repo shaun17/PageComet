@@ -224,8 +224,14 @@ export const normalizeContentPage = (
     names.repositoryUrl,
   );
   if (!publishedAt) throw new Error(`文章「${title}」必须填写发布日期`);
-  const propertyCover = readFilesProperty(getPageProperty(page, names.cover), title);
-  const cover = propertyCover ?? readFileImage(page.cover, title);
+  // 页面编辑时间保证封面被替换后缓存必然失效；普通正文编辑只会多下载这一张封面。
+  const coverCacheKey = `page:${page.id}:cover:${page.last_edited_time}`;
+  const propertyCover = readFilesProperty(
+    getPageProperty(page, names.cover),
+    title,
+    coverCacheKey,
+  );
+  const cover = propertyCover ?? readFileImage(page.cover, title, coverCacheKey);
 
   return {
     id: page.id,

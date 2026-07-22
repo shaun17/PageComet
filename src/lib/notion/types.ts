@@ -32,6 +32,8 @@ export interface ContentMedia {
   source: "notion" | "external";
   expiryTime: string | null;
   localized: boolean;
+  /** Notion 对象和版本组成的稳定身份；临时签名变化不会导致缓存失效。 */
+  cacheKey?: string;
 }
 
 /** 图片额外保留替代文本与实际展示尺寸，供页面稳定判断横竖方向。 */
@@ -172,6 +174,8 @@ export interface ContentFileAttachment {
 export interface MediaLocalizationOptions {
   outputDirectory?: string;
   publicPath?: string;
+  /** 跨构建复用的本地资源库；设为 false 可显式关闭持久缓存。 */
+  cacheDirectory?: string | false;
   maxImageBytes?: number;
   maxVideoBytes?: number;
   maxAudioBytes?: number;
@@ -181,4 +185,6 @@ export interface MediaLocalizationOptions {
   localizeExternalAudios?: boolean;
   maxRedirects?: number;
   requestTimeoutMs?: number;
+  /** 正式构建输出缓存命中和真实下载数量。 */
+  reportCacheStats?: boolean;
 }

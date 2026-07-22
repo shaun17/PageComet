@@ -130,6 +130,10 @@ test("maps Form text, ordered media, and embed URL into flat feed blocks", () =>
   ]);
   assert.equal(entry.blocks[2].richText[0].href, "https://example.com/details");
   assert.equal(entry.blocks[3].image.alt, "photo.png");
+  assert.equal(
+    entry.blocks[3].image.cacheKey,
+    "page:journal-page:journal-media:0:2026-07-20T01:00:00.000Z",
+  );
   assert.equal(entry.blocks[4].video.source, "notion");
   assert.equal(entry.blocks[5].audio.expiryTime, "2026-07-20T02:00:00.000Z");
   assert.equal(entry.blocks[6].url, "https://www.youtube.com/shorts/hHbEbYAwW0s");

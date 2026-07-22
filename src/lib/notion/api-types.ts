@@ -34,6 +34,7 @@ export interface NotionBlockResponse {
   id: string;
   type: string;
   has_children: boolean;
+  last_edited_time?: string;
   archived?: boolean;
   is_archived?: boolean;
   in_trash?: boolean;

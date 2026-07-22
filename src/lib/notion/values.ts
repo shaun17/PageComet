@@ -131,7 +131,10 @@ export const readMultiSelectProperty = (property: NotionPropertyValue): string[]
 };
 
 /** 从 Notion 文件对象解析可访问 URL；已挂载的 file_upload 会由 API 作为 file 返回。 */
-export const readFileMedia = (value: unknown): ContentMedia | null => {
+export const readFileMedia = (
+  value: unknown,
+  cacheKey?: string,
+): ContentMedia | null => {
   const file = asRecord(value);
   if (!file || typeof file.type !== "string") return null;
 
@@ -143,6 +146,7 @@ export const readFileMedia = (value: unknown): ContentMedia | null => {
       source: "notion",
       expiryTime: typeof source.expiry_time === "string" ? source.expiry_time : null,
       localized: false,
+      ...(cacheKey ? { cacheKey } : {}),
     };
   }
 
@@ -161,8 +165,12 @@ export const readFileMedia = (value: unknown): ContentMedia | null => {
 };
 
 /** 图片复用通用媒体解析，并补充页面渲染所需的替代文本。 */
-export const readFileImage = (value: unknown, alt: string): ContentImage | null => {
-  const media = readFileMedia(value);
+export const readFileImage = (
+  value: unknown,
+  alt: string,
+  cacheKey?: string,
+): ContentImage | null => {
+  const media = readFileMedia(value, cacheKey);
   return media ? { ...media, alt } : null;
 };
 
@@ -170,20 +178,22 @@ export const readFileImage = (value: unknown, alt: string): ContentImage | null 
 export const readFilesProperty = (
   property: NotionPropertyValue,
   alt: string,
+  cacheKey?: string,
 ): ContentImage | null => {
   if (!Array.isArray(property.files)) return null;
   const first = property.files[0];
-  return first ? readFileImage(first, alt) : null;
+  return first ? readFileImage(first, alt, cacheKey) : null;
 };
 
 /** 读取 FILES 属性中的全部附件；任何损坏项都明确失败，避免发布时静默丢素材。 */
 export const readFileAttachmentsProperty = (
   property: NotionPropertyValue,
+  createCacheKey?: (index: number) => string,
 ): ContentFileAttachment[] => {
   if (!Array.isArray(property.files)) return [];
   return property.files.map((value, index) => {
     const file = asRecord(value);
-    const media = readFileMedia(value);
+    const media = readFileMedia(value, createCacheKey?.(index));
     if (!file || !media) {
       throw new Error(`Notion 文件属性中的第 ${index + 1} 个附件无法读取`);
     }

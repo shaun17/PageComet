@@ -113,7 +113,11 @@ const loadSiteContentBundle = async (): Promise<SiteContentBundle> => {
   // 全站媒体共用一个 DNS、TLS 和连接池，并以 3 路并发缩短下载关键路径。
   const localized = await localizeContentEntriesMedia<ContentEntry | JournalEntry>(
     [...articles, ...journals],
-    { localizeExternalImages: true, concurrency: 3 },
+    {
+      localizeExternalImages: true,
+      concurrency: 3,
+      reportCacheStats: true,
+    },
   );
   return prepareSiteContent(
     localized.slice(0, articles.length) as ContentEntry[],

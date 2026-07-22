@@ -171,6 +171,24 @@ test("maps project and repository URLs from Notion into one content entry", () =
   assert.equal(entry.repositoryUrl, "https://github.com/example/atlas-notes");
 });
 
+test("versions an article cover cache with the owning page edit time", () => {
+  const page = createPublishedPage(null);
+  page.properties.封面.files = [{
+    name: "cover.png",
+    type: "file",
+    file: {
+      url: "https://files.example/cover.png?signature=temporary",
+      expiry_time: "2026-07-19T02:00:00.000Z",
+    },
+  }];
+  const entry = normalizeContentPage(page, [], resolvePropertyNames());
+
+  assert.equal(
+    entry.cover.cacheKey,
+    "page:project-entry:cover:2026-07-19T01:00:00.000Z",
+  );
+});
+
 test("maps the Notion manuscript category to the writing route", () => {
   const entry = normalizeContentPage(
     createPublishedPage(null, "文稿"),
