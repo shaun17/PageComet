@@ -2,6 +2,7 @@
 import type { ContentEntry } from "../lib/notion";
 import { CATEGORY_DEFINITIONS } from "../content/categories";
 import SiteLayout from "../layouts/SiteLayout.astro";
+import BackLink from "./BackLink.astro";
 import NotionBlocks from "./NotionBlocks.astro";
 import PageFooter from "./PageFooter.astro";
 import ProjectLinks from "./ProjectLinks.astro";
@@ -23,7 +24,7 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
 <SiteLayout title={entry.title} description={entry.summary} type="article">
   <main class="content-shell article-shell">
     <nav class="page-navigation" aria-label="页面导航">
-      <a href={category.path}>← 返回{category.label}</a>
+      <BackLink href={category.path} label={`返回${category.label}`} />
     </nav>
 
     <article>
@@ -55,7 +56,7 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
 
       <nav class="article-return" aria-label="返回分类">
         <span class="article-end-marker" aria-hidden="true">END</span>
-        <a href={category.path}>← 返回{category.label}</a>
+        <BackLink href={category.path} label={`返回${category.label}`} />
       </nav>
     </article>
 

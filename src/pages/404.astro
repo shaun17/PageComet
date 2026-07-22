@@ -1,4 +1,5 @@
 ---
+import BackLink from "../components/BackLink.astro";
 import PageFooter from "../components/PageFooter.astro";
 import SiteLayout from "../layouts/SiteLayout.astro";
 ---
@@ -7,7 +8,7 @@ import SiteLayout from "../layouts/SiteLayout.astro";
   <main class="content-shell not-found">
     <p class="category-kicker">404 / NOT FOUND</p>
     <h1>这里没有内容。</h1>
-    <a class="not-found-return" href="/">← 返回首页</a>
+    <BackLink class="not-found-return" href="/" label="返回首页" />
     <PageFooter />
   </main>
 </SiteLayout>

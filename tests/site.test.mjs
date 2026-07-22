@@ -147,6 +147,7 @@ test("builds article indexes and the journal feed", async () => {
     repositoryOnlyWork,
     projectOnlyWork,
     duplicateLinkWork,
+    notFound,
   ] = await Promise.all([
     readRoute("career/index.html"),
     readRoute("works/index.html"),
@@ -158,6 +159,7 @@ test("builds article indexes and the journal feed", async () => {
     readRoute("works/focus-timer/index.html"),
     readRoute("works/pocket-gallery/index.html"),
     readRoute("works/shared-link/index.html"),
+    readRoute("404.html"),
   ]);
 
   for (const html of [
@@ -171,6 +173,7 @@ test("builds article indexes and the journal feed", async () => {
     repositoryOnlyWork,
     projectOnlyWork,
     duplicateLinkWork,
+    notFound,
   ]) {
     assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
     assert.ok(findAnchor(html, siteConfig.designCredit.href));
@@ -188,6 +191,23 @@ test("builds article indexes and the journal feed", async () => {
   assert.match(journal, /04 \/ JOURNAL/);
   assert.ok(findAnchor(career, "/career/northstar-studio/"));
   assert.ok(findAnchor(works, "/works/atlas-notes/"));
+  for (const html of [career, works, writing, journal]) {
+    assert.match(html, /class="back-link"/);
+    assert.match(
+      html,
+      /class="back-link-arrow" aria-hidden="true">←<\/span><span>首页<\/span>/,
+    );
+  }
+  assert.equal((exampleCareer.match(/class="back-link"/g) ?? []).length, 2);
+  assert.equal(
+    (exampleCareer.match(/class="back-link-arrow" aria-hidden="true">←<\/span>/g) ?? [])
+      .length,
+    2,
+  );
+  assert.match(
+    notFound,
+    /class="back-link not-found-return"[^>]*>[\s\S]*?class="back-link-arrow" aria-hidden="true">←<\/span><span>返回首页<\/span>/,
+  );
 
   assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
@@ -513,6 +533,23 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(pageFooterRule);
   assert.match(pageFooterRule, /margin-top:auto/);
   assert.match(pageFooterRule, /padding-top:clamp\(5rem,10vw,10rem\)/);
+  const backLinkRule = css.match(/\.back-link\{([^}]*)\}/)?.[1];
+  assert.ok(backLinkRule);
+  assert.match(backLinkRule, /display:inline-flex/);
+  assert.match(backLinkRule, /align-items:baseline/);
+  assert.match(backLinkRule, /gap:\.42em/);
+  const backLinkArrowRule = css.match(/\.back-link-arrow\{([^}]*)\}/)?.[1];
+  assert.ok(backLinkArrowRule);
+  assert.match(backLinkArrowRule, /display:inline-block/);
+  assert.match(backLinkArrowRule, /transition:transform \.22s cubic-bezier\(\.16,1,\.3,1\)/);
+  assert.match(
+    css,
+    /\.back-link:focus-visible \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
+  );
+  assert.match(
+    css,
+    /\.back-link:hover \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
+  );
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:46rem/);

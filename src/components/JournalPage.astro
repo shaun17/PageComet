@@ -2,6 +2,7 @@
 import type { JournalEntry } from "../lib/notion";
 import type { CategoryDefinition } from "../content/categories";
 import SiteLayout from "../layouts/SiteLayout.astro";
+import BackLink from "./BackLink.astro";
 import JournalFeed from "./JournalFeed.astro";
 import PageFooter from "./PageFooter.astro";
 
@@ -15,7 +16,9 @@ const { category, entries } = Astro.props;
 
 <SiteLayout title={category.label} description={category.description}>
   <main class="content-shell journal-shell">
-    <nav class="page-navigation" aria-label="页面导航"><a href="/">← 首页</a></nav>
+    <nav class="page-navigation" aria-label="页面导航">
+      <BackLink href="/" label="首页" />
+    </nav>
 
     <header class="category-header">
       <p class="category-kicker">{category.index} / {category.englishLabel}</p>

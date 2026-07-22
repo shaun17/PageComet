@@ -1,0 +1,15 @@
+---
+interface Props {
+  href: string;
+  label: string;
+  class?: string;
+}
+
+const { href, label, class: className } = Astro.props;
+---
+
+<!-- 箭头只提供视觉方向提示，链接的可访问名称由文字标签完整表达。 -->
+<a class:list={["back-link", className]} href={href}>
+  <span class="back-link-arrow" aria-hidden="true">←</span>
+  <span>{label}</span>
+</a>
