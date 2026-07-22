@@ -1,11 +1,13 @@
 /* 页面返回导航到主内容统一使用同一间距，避免目录页与文章页再次分叉。 */
 .content-shell {
   --page-content-start-gap: clamp(2.25rem, 3.5vw, 3rem);
+  display: flex;
   width: 100%;
   max-width: 100rem;
   min-height: 100svh;
   margin: 0 auto;
   padding: 0 var(--page-gutter) clamp(2rem, 5vw, 4.5rem);
+  flex-direction: column;
 }
 
 .page-navigation {
@@ -62,8 +64,10 @@
   line-height: 1.65;
 }
 
+/* 自动外边距吸收短页面的剩余高度，内部留白则保证长页面仍有稳定的收尾间距。 */
 .page-footer {
-  margin-top: clamp(5rem, 10vw, 10rem);
+  margin-top: auto;
+  padding-top: clamp(5rem, 10vw, 10rem);
 }
 
 .not-found {

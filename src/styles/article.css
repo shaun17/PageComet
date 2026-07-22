@@ -135,7 +135,7 @@
 
 /* 文章页收尾使用更紧凑的页脚间距，目录页继续保留原有的大留白。 */
 .article-shell .page-footer {
-  margin-top: clamp(3rem, 5vw, 4rem);
+  padding-top: clamp(3rem, 5vw, 4rem);
 }
 
 @media (max-width: 600px) {

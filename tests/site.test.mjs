@@ -506,6 +506,13 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
     contentShellRule,
     /--page-content-start-gap:clamp\(2\.25rem,\s*3\.5vw,\s*3rem\)/,
   );
+  assert.match(contentShellRule, /display:flex/);
+  assert.match(contentShellRule, /min-height:100svh/);
+  assert.match(contentShellRule, /flex-direction:column/);
+  const pageFooterRule = css.match(/\.page-footer\{([^}]*)\}/)?.[1];
+  assert.ok(pageFooterRule);
+  assert.match(pageFooterRule, /margin-top:auto/);
+  assert.match(pageFooterRule, /padding-top:clamp\(5rem,10vw,10rem\)/);
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:46rem/);
@@ -565,7 +572,7 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
     /\.article-shell \.page-footer\{([^}]*)\}/,
   )?.[1];
   assert.ok(articleFooterRule);
-  assert.match(articleFooterRule, /margin-top:clamp\(3rem,5vw,4rem\)/);
+  assert.match(articleFooterRule, /padding-top:clamp\(3rem,5vw,4rem\)/);
   const articleCoverRule = css.match(/\.article-cover\{([^}]*)\}/)?.[1];
   assert.ok(articleCoverRule);
   assert.match(articleCoverRule, /max-width:var\(--article-content-width\)/);
