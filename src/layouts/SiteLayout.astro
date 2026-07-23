@@ -2,22 +2,133 @@
 import "../styles/global.css";
 import { siteConfig } from "../config/runtime-site-config";
 
+interface ContentMetadata {
+  publishedAt: string | null;
+  updatedAt: string;
+  section: string;
+  tags: string[];
+  image?: {
+    url: string;
+    alt: string;
+  } | null;
+  schemaType?: "BlogPosting";
+}
+
 interface Props {
   title?: string;
   description?: string;
-  type?: "website" | "article";
+  content?: ContentMetadata;
+  noindex?: boolean;
 }
 
 const {
   title,
   description = siteConfig.brand.description,
-  type = "website",
+  content,
+  noindex = false,
 } = Astro.props;
-const socialTitle = title ? `${title} — ${siteConfig.brand.name}` : siteConfig.brand.socialTitle;
-// 浏览器标签始终展示固定品牌名，页面标题只保留给社交分享元数据。
-const browserTitle = siteConfig.brand.browserTitle;
+
+// 首页使用完整品牌定位，内页使用“页面名 — 品牌名”，让搜索结果中的每个地址都可区分。
+const pageTitle = title
+  ? `${title} — ${siteConfig.brand.name}`
+  : siteConfig.brand.browserTitle;
+const socialTitle = title ? pageTitle : siteConfig.brand.socialTitle;
 // Astro.site 由站点配置固定，构建时为每个静态页面生成唯一规范地址。
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const siteUrl = new URL("/", Astro.site);
+const personId = new URL("/#person", Astro.site).href;
+const websiteId = new URL("/#website", Astro.site).href;
+const webPageId = `${canonicalUrl.href}#webpage`;
+const articleId = `${canonicalUrl.href}#article`;
+const openGraphLocale = siteConfig.locale.replaceAll("-", "_");
+const imageUrl = content?.image ? new URL(content.image.url, Astro.site) : null;
+const robots = noindex
+  ? "noindex, follow"
+  : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+const sameAs = siteConfig.contacts
+  .filter((contact) => contact.external && /^https?:\/\//i.test(contact.href))
+  .map((contact) => contact.href);
+
+const person = {
+  "@type": "Person",
+  "@id": personId,
+  name: siteConfig.brand.name,
+  url: siteUrl.href,
+  description: siteConfig.home.biography.join(" "),
+  sameAs: sameAs.length > 0 ? sameAs : undefined,
+};
+const website = {
+  "@type": "WebSite",
+  "@id": websiteId,
+  name: siteConfig.brand.name,
+  url: siteUrl.href,
+  description: siteConfig.brand.description,
+  inLanguage: siteConfig.locale,
+  publisher: { "@id": personId },
+};
+const graph: Record<string, unknown>[] = [website, person];
+
+if (!noindex) {
+  if (!title) {
+    graph.push({
+      "@type": "ProfilePage",
+      "@id": webPageId,
+      name: pageTitle,
+      url: canonicalUrl.href,
+      description,
+      inLanguage: siteConfig.locale,
+      isPartOf: { "@id": websiteId },
+      mainEntity: { "@id": personId },
+    });
+  } else {
+    const webPage: Record<string, unknown> = {
+      "@type": "WebPage",
+      "@id": webPageId,
+      name: pageTitle,
+      url: canonicalUrl.href,
+      description,
+      inLanguage: siteConfig.locale,
+      isPartOf: { "@id": websiteId },
+      about: { "@id": personId },
+    };
+    if (content?.schemaType === "BlogPosting") {
+      webPage.mainEntity = { "@id": articleId };
+    }
+    graph.push(webPage);
+  }
+
+  if (content?.schemaType === "BlogPosting") {
+    graph.push({
+      "@type": "BlogPosting",
+      "@id": articleId,
+      headline: title,
+      description,
+      url: canonicalUrl.href,
+      mainEntityOfPage: { "@id": webPageId },
+      datePublished: content.publishedAt ?? undefined,
+      dateModified: content.updatedAt,
+      articleSection: content.section,
+      keywords: content.tags.length > 0 ? content.tags : undefined,
+      image: imageUrl?.href,
+      inLanguage: siteConfig.locale,
+      author: {
+        "@type": "Person",
+        "@id": personId,
+        name: siteConfig.brand.name,
+        url: siteUrl.href,
+      },
+      publisher: { "@id": personId },
+      isPartOf: { "@id": websiteId },
+    });
+  }
+}
+
+/** 转义左尖括号，阻止正文数据提前结束 JSON-LD script 标签。 */
+const serializeStructuredData = (value: unknown): string =>
+  JSON.stringify(value).replaceAll("<", "\\u003c");
+const structuredDataJson = noindex
+  ? null
+  : serializeStructuredData({ "@context": "https://schema.org", "@graph": graph });
 ---
 
 <!doctype html>
@@ -26,14 +137,30 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="robots" content={robots} />
     <meta name="color-scheme" content="light dark" />
-    <meta property="og:type" content={type} />
+    <meta property="og:type" content={content ? "article" : "website"} />
+    <meta property="og:site_name" content={siteConfig.brand.name} />
+    <meta property="og:locale" content={openGraphLocale} />
     <meta property="og:title" content={socialTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
+    {imageUrl && <meta property="og:image" content={imageUrl} />}
+    {content?.image && <meta property="og:image:alt" content={content.image.alt} />}
+    {content?.publishedAt && (
+      <meta property="article:published_time" content={content.publishedAt} />
+    )}
+    {content && <meta property="article:modified_time" content={content.updatedAt} />}
+    {content && <meta property="article:section" content={content.section} />}
+    {content?.tags.map((tag) => <meta property="article:tag" content={tag} />)}
+    <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={socialTitle} />
+    <meta name="twitter:description" content={description} />
+    {imageUrl && <meta name="twitter:image" content={imageUrl} />}
+    {content?.image && <meta name="twitter:image:alt" content={content.image.alt} />}
     <link rel="canonical" href={canonicalUrl} />
-    <title>{browserTitle}</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{pageTitle}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
     <link
       rel="preload"
       href="/fonts/geist-98bbbccb.woff2"
@@ -48,6 +175,9 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
       type="font/woff2"
       crossorigin
     />
+    {structuredDataJson && (
+      <script type="application/ld+json" is:inline set:html={structuredDataJson}></script>
+    )}
   </head>
   <body>
     <slot />

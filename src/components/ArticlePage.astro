@@ -22,7 +22,20 @@ const updatedDate = entry.updatedAt.slice(0, 10).replaceAll("-", ".");
 const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDate);
 ---
 
-<SiteLayout title={entry.title} description={entry.summary} type="article">
+<SiteLayout
+  title={entry.title}
+  description={entry.summary}
+  content={{
+    publishedAt: entry.publishedAt,
+    updatedAt: entry.updatedAt,
+    section: category.label,
+    tags: entry.tags,
+    image: entry.cover
+      ? { url: entry.cover.url, alt: entry.cover.alt || entry.title }
+      : null,
+    schemaType: entry.category === "writing" ? "BlogPosting" : undefined,
+  }}
+>
   <main class="content-shell article-shell">
     <nav class="page-navigation" aria-label="页面导航">
       <BackLink href={category.path} label={`返回${category.label}`} />

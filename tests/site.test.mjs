@@ -52,12 +52,55 @@ const escapeHtmlText = (value) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
+/** 移除 JSON-LD 数据脚本后再检查 CSP，非执行数据不应被误判为内联代码。 */
+const removeStructuredDataScripts = (html) =>
+  html.replace(
+    /<script\b(?=[^>]*\btype="application\/ld\+json")[^>]*>[\s\S]*?<\/script>/gi,
+    "",
+  );
+
+/** 读取页面唯一的 JSON-LD 对象，直接验证构建后的搜索语义。 */
+const extractStructuredData = (html) => {
+  const match = html.match(
+    /<script\b(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  assert.ok(match, "页面应包含 JSON-LD 结构化数据");
+  return JSON.parse(match[1]);
+};
+
+/** 按 Schema 类型查找 JSON-LD 图节点。 */
+const findStructuredDataNode = (data, type) =>
+  data["@graph"].find((node) => node["@type"] === type);
+
+/** 提取最终 HTML 的文档标题，验证页面之间不会继续共用同一个标题。 */
+const extractDocumentTitle = (html) => html.match(/<title>([^<]+)<\/title>/)?.[1];
+
 /** 首页保持极简四列，流水账只留下二级页面入口。 */
 test("builds the four-column homepage with a single journal entry point", async () => {
   const html = await readRoute();
 
   assert.ok(html.includes(`<html lang="${siteConfig.locale}">`));
   assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
+  assert.ok(
+    html.includes(
+      `<meta name="description" content="${escapeHtmlText(siteConfig.brand.description)}">`,
+    ),
+  );
+  assert.match(
+    html,
+    /<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">/,
+  );
+  assert.ok(
+    html.includes(
+      `<meta property="og:title" content="${escapeHtmlText(siteConfig.brand.socialTitle)}">`,
+    ),
+  );
+  assert.ok(
+    html.includes(
+      `<meta name="twitter:title" content="${escapeHtmlText(siteConfig.brand.socialTitle)}">`,
+    ),
+  );
+  assert.ok(html.includes(`<link rel="canonical" href="${siteConfig.origin}/">`));
   assert.ok(html.includes(escapeHtmlText(siteConfig.brand.kicker)));
   assert.ok(html.includes(escapeHtmlText(siteConfig.home.headline.prefix)));
   assert.match(html, /<section class="home-information" aria-label="个人信息">/);
@@ -71,7 +114,10 @@ test("builds the four-column homepage with a single journal entry point", async 
   assert.match(html, /data-decimal-year-remaining[^>]*>\s*\d{18,19}\.\d{4}\s*</);
   assert.match(html, /距离 \d{4} 年还有 \d+\.\d{2}%/);
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
-  assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
+  assert.doesNotMatch(
+    removeStructuredDataScripts(html),
+    /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i,
+  );
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
   assert.equal((html.match(/class="directory-column(?: |")/g) ?? []).length, 4);
   assert.deepEqual(extractDirectoryColumns(html), [
@@ -126,6 +172,15 @@ test("builds the four-column homepage with a single journal entry point", async 
   );
   assert.match(html, /<!--email_off-->/);
   assert.match(html, /<!--\/email_off-->/);
+
+  const structuredData = extractStructuredData(html);
+  assert.equal(structuredData["@context"], "https://schema.org");
+  assert.equal(findStructuredDataNode(structuredData, "WebSite").url, `${siteConfig.origin}/`);
+  assert.equal(findStructuredDataNode(structuredData, "Person").name, siteConfig.brand.name);
+  assert.equal(
+    findStructuredDataNode(structuredData, "ProfilePage").mainEntity["@id"],
+    `${siteConfig.origin}/#person`,
+  );
 });
 
 /** 文章型分类保留详情页，流水账改为唯一的多媒体时间流。 */
@@ -162,7 +217,7 @@ test("builds article indexes and the journal feed", async () => {
     readRoute("404.html"),
   ]);
 
-  for (const html of [
+  const titledPages = [
     career,
     works,
     writing,
@@ -174,10 +229,23 @@ test("builds article indexes and the journal feed", async () => {
     projectOnlyWork,
     duplicateLinkWork,
     notFound,
-  ]) {
-    assert.ok(html.includes(`<title>${escapeHtmlText(siteConfig.brand.browserTitle)}</title>`));
+  ];
+  for (const html of titledPages) {
+    assert.match(extractDocumentTitle(html) ?? "", new RegExp(` — ${siteConfig.brand.name}$`));
     assert.ok(findAnchor(html, siteConfig.designCredit.href));
   }
+  assert.equal(extractDocumentTitle(career), `职业经历 — ${siteConfig.brand.name}`);
+  assert.equal(extractDocumentTitle(works), `个人作品 — ${siteConfig.brand.name}`);
+  assert.equal(extractDocumentTitle(writing), `文稿 — ${siteConfig.brand.name}`);
+  assert.equal(extractDocumentTitle(journal), `流水账 — ${siteConfig.brand.name}`);
+  assert.equal(
+    extractDocumentTitle(exampleWriting),
+    `用 Notion 写一篇文章 — ${siteConfig.brand.name}`,
+  );
+  assert.equal(extractDocumentTitle(notFound), `页面不存在 — ${siteConfig.brand.name}`);
+  assert.equal(new Set(titledPages.map(extractDocumentTitle)).size, titledPages.length);
+  assert.match(notFound, /<meta name="robots" content="noindex, follow">/);
+  assert.doesNotMatch(notFound, /application\/ld\+json/);
 
   assert.match(career, /01 \/ CAREER/);
   assert.match(career, /Northstar Studio/);
@@ -308,7 +376,10 @@ test("builds article indexes and the journal feed", async () => {
   );
   assert.doesNotMatch(journal, /class="project-links"/);
   assert.match(journal, /<script type="module" src="\/_astro\/[^\"]+\.js"><\/script>/);
-  assert.doesNotMatch(journal, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
+  assert.doesNotMatch(
+    removeStructuredDataScripts(journal),
+    /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i,
+  );
 
   const journalScriptPaths = [
     ...journal.matchAll(/<script type="module" src="([^\"]+\.js)"><\/script>/g),
@@ -424,6 +495,54 @@ test("builds article indexes and the journal feed", async () => {
   ]) {
     await assert.rejects(access(new URL(route, buildRoot)));
   }
+
+  const writingStructuredData = extractStructuredData(exampleWriting);
+  const blogPosting = findStructuredDataNode(writingStructuredData, "BlogPosting");
+  assert.equal(blogPosting.headline, "用 Notion 写一篇文章");
+  assert.equal(blogPosting.datePublished, "2026-07-18");
+  assert.equal(blogPosting.dateModified, "2026-07-18T09:00:00.000Z");
+  assert.equal(blogPosting.articleSection, "文稿");
+  assert.deepEqual(blogPosting.keywords, ["随笔", "技术"]);
+  assert.equal(blogPosting.author.name, siteConfig.brand.name);
+  assert.equal(
+    findStructuredDataNode(writingStructuredData, "WebPage").mainEntity["@id"],
+    `${siteConfig.origin}/writing/writing-with-notion/#article`,
+  );
+  const careerStructuredData = extractStructuredData(exampleCareer);
+  assert.equal(findStructuredDataNode(careerStructuredData, "BlogPosting"), undefined);
+});
+
+/** 搜索引擎可以发现全部规范页面，但不会发现 404、草稿或流水账伪详情页。 */
+test("builds sitemap and robots discovery files from published content", async () => {
+  const [sitemap, robots] = await Promise.all([
+    readRoute("sitemap.xml"),
+    readRoute("robots.txt"),
+  ]);
+
+  assert.match(sitemap, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+  assert.match(sitemap, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
+  for (const route of [
+    "/",
+    "/career/",
+    "/works/",
+    "/writing/",
+    "/journal/",
+    ...expectedArticleRoutes,
+  ]) {
+    assert.ok(
+      sitemap.includes(`<loc>${siteConfig.origin}${route}</loc>`),
+      `Sitemap 应包含已发布地址：${route}`,
+    );
+  }
+  assert.doesNotMatch(
+    sitemap,
+    /\/404\/|\/writing\/start-here\/|\/journal\/multimedia-journal\//,
+  );
+  assert.match(sitemap, /<lastmod>2026-07-18T09:00:00\.000Z<\/lastmod>/);
+  assert.equal(
+    robots,
+    `User-agent: *\nAllow: /\n\nSitemap: ${siteConfig.origin}/sitemap.xml\n`,
+  );
 });
 
 /** 正式产物不能泄漏 Notion 凭据或一小时后失效的临时资源地址。 */

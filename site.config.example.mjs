@@ -10,10 +10,10 @@ export const siteConfig = defineSiteConfig({
   origin: "https://portfolio.example.com",
   brand: {
     name: "Alice",
-    browserTitle: "ALICE",
+    browserTitle: "Alice — 设计师与独立开发者",
     socialTitle: "Alice — 设计师与独立开发者",
     kicker: "ALICE / DESIGNER & DEVELOPER",
-    description: "Alice 的个人网站，收录职业经历、个人作品、文章与日常记录。",
+    description: "Alice 的个人网站，聚焦产品设计与独立开发——用户体验、数字产品、独立作品、阅读与生活。",
   },
   home: {
     headline: {
@@ -23,8 +23,8 @@ export const siteConfig = defineSiteConfig({
       suffix: "。",
     },
     biography: [
-      "产品设计师，也是一名独立开发者。把想法做成简单、好用的产品。",
-      "喜欢阅读、徒步，也期待认识更多有趣的朋友。",
+      "产品设计师与独立开发者。关注用户体验，也把想法做成简单、好用的产品。",
+      "在这里记录职业经历、独立作品、阅读与生活。",
     ],
   },
   contacts: [
