@@ -6,6 +6,7 @@ import BackLink from "./BackLink.astro";
 import NotionBlocks from "./NotionBlocks.astro";
 import PageFooter from "./PageFooter.astro";
 import ProjectLinks from "./ProjectLinks.astro";
+import WritingTags from "./WritingTags.astro";
 
 interface Props {
   entry: ContentEntry;
@@ -37,6 +38,7 @@ const showUpdatedDate = Boolean(entry.publishedAt && updatedDate !== publishedDa
         </p>
         <h1>{entry.title}</h1>
         {entry.summary && <p class="article-summary">{entry.summary}</p>}
+        <WritingTags entry={entry} placement="article" />
         <hr class="article-divider" />
         <ProjectLinks
           projectUrl={entry.externalUrl}

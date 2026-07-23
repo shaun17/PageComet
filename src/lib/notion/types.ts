@@ -124,6 +124,7 @@ export interface ContentEntry extends RenderableContentEntry {
   updatedAt: string;
   order: number;
   featured: boolean;
+  /** 标签仅用于文稿分类；其他分类在构建阶段禁止填写。 */
   tags: string[];
   externalUrl: string | null;
   repositoryUrl: string | null;

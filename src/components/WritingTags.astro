@@ -1,0 +1,23 @@
+---
+import type { ContentEntry } from "../lib/notion";
+
+interface Props {
+  entry: Pick<ContentEntry, "category" | "tags">;
+  placement: "article" | "list";
+}
+
+const { entry, placement } = Astro.props;
+// 标签是文稿专属元数据；组件层再次收口，避免通用文章组件误展示其他分类的标签。
+const visibleTags = entry.category === "writing" ? entry.tags : [];
+---
+
+{
+  visibleTags.length > 0 && (
+    <ul
+      class:list={["writing-tags", `writing-tags-${placement}`]}
+      aria-label="文章标签"
+    >
+      {visibleTags.map((tag) => <li>{tag}</li>)}
+    </ul>
+  )
+}

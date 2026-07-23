@@ -232,6 +232,12 @@ export const normalizeContentPage = (
     coverCacheKey,
   );
   const cover = propertyCover ?? readFileImage(page.cover, title, coverCacheKey);
+  const tags = readMultiSelectProperty(getPageProperty(page, names.tags));
+  if (category !== "writing" && tags.length > 0) {
+    throw new Error(
+      `Notion 页面 ${page.id} 的「${names.tags}」仅允许用于文稿分类`,
+    );
+  }
 
   return {
     id: page.id,
@@ -245,7 +251,7 @@ export const normalizeContentPage = (
     updatedAt: page.last_edited_time,
     order: normalizeOrder(readNumberProperty(getPageProperty(page, names.order)), page.id),
     featured: readCheckboxProperty(getPageProperty(page, names.featured)),
-    tags: readMultiSelectProperty(getPageProperty(page, names.tags)),
+    tags,
     externalUrl,
     repositoryUrl,
     notionUrl: page.url,

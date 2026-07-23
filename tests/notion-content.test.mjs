@@ -190,14 +190,23 @@ test("versions an article cover cache with the owning page edit time", () => {
 });
 
 test("maps the Notion manuscript category to the writing route", () => {
-  const entry = normalizeContentPage(
-    createPublishedPage(null, "文稿"),
-    [],
-    resolvePropertyNames(),
-  );
+  const page = createPublishedPage(null, "文稿");
+  page.properties.标签.multi_select = [{ name: "健身" }];
+  const entry = normalizeContentPage(page, [], resolvePropertyNames());
 
   assert.equal(entry.category, "writing");
   assert.equal(entry.route, "/writing/atlas-notes");
+  assert.deepEqual(entry.tags, ["健身"]);
+});
+
+test("rejects tags outside the manuscript category", () => {
+  const page = createPublishedPage(null, "个人作品");
+  page.properties.标签.multi_select = [{ name: "健身" }];
+
+  assert.throws(
+    () => normalizeContentPage(page, [], resolvePropertyNames()),
+    /标签.*仅允许用于文稿分类/,
+  );
 });
 
 test("keeps an empty repository property as null", () => {

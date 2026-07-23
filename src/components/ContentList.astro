@@ -1,6 +1,7 @@
 ---
 import type { ContentEntry } from "../lib/notion";
 import { getEntryHref } from "../content/site-content";
+import WritingTags from "./WritingTags.astro";
 
 interface Props {
   entries: ContentEntry[];
@@ -29,6 +30,7 @@ const formatDate = (value: string | null): string | null =>
                     </span>
                   </span>
                   {entry.summary && <span class="content-list-summary">{entry.summary}</span>}
+                  <WritingTags entry={entry} placement="list" />
                 </span>
                 {date && <time datetime={entry.publishedAt ?? undefined}>{date}</time>}
               </a>

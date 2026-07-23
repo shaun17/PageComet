@@ -213,6 +213,21 @@ test("builds article indexes and the journal feed", async () => {
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
   assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
   assert.match(exampleWriting, /<h1>用 Notion 写一篇文章<\/h1>/);
+  assert.match(
+    writing,
+    /<ul class="writing-tags writing-tags-list" aria-label="文章标签">/,
+  );
+  assert.match(
+    exampleWriting,
+    /<ul class="writing-tags writing-tags-article" aria-label="文章标签">/,
+  );
+  for (const tag of ["随笔", "技术"]) {
+    assert.match(writing, new RegExp(`<li>${tag}</li>`));
+    assert.match(exampleWriting, new RegExp(`<li>${tag}</li>`));
+  }
+  for (const html of [career, works, exampleCareer, exampleWork]) {
+    assert.doesNotMatch(html, /class="writing-tags/);
+  }
   for (const html of [exampleCareer, exampleWork, exampleWriting]) {
     assert.equal(
       (html.match(/class="article-divider"/g) ?? []).length,

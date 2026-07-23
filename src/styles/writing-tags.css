@@ -1,0 +1,29 @@
+/* 文稿标签使用轻量文字标记，不引入卡片或按钮视觉。 */
+.writing-tags {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.85rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  list-style: none;
+}
+
+.writing-tags li::before {
+  margin-right: 0.1em;
+  color: var(--line-strong);
+  content: "#";
+}
+
+.writing-tags-article {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.035em;
+}
+
+.writing-tags-list {
+  margin-top: 0.6rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.025em;
+}
