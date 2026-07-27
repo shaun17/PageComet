@@ -9,6 +9,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "check:repository-boundary": "node scripts/check-repository-boundary.mjs",
     "clean:notion-assets": "node scripts/clean-notion-assets.mjs",
     "validate:site-config": "node scripts/validate-site-config.mjs",
     "predev": "npm run clean:notion-assets && npm run validate:site-config",
@@ -26,7 +27,7 @@
     "cloudflare:login": "wrangler login",
     "pages:create": "node --env-file-if-exists=.env scripts/create-pages-project.mjs",
     "verify:dist": "node scripts/verify-static-output.mjs",
-    "test": "npm run check && npm run build:fixture && cross-env SITE_CONFIG_MODE=example node --test tests/*.test.mjs && npm run verify:dist",
+    "test": "npm run check:repository-boundary && npm run check && npm run build:fixture && cross-env SITE_CONFIG_MODE=example node --test tests/*.test.mjs && npm run verify:dist",
     "deploy": "node --env-file-if-exists=.env scripts/deploy.mjs"
   },
   "devDependencies": {
