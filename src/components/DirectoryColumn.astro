@@ -1,39 +1,45 @@
 ---
 import type { ContentEntry } from "../lib/notion";
 import type { CategoryDefinition } from "../content/categories";
+import { selectDirectoryPreviewEntries } from "../content/directory-preview.mjs";
 import { getEntryHref } from "../content/site-content";
 
 interface Props {
   category: CategoryDefinition;
   entries: ContentEntry[];
+  headingLevel?: "h2" | "h3";
 }
 
-const { category, entries } = Astro.props;
+const { category, entries, headingLevel = "h2" } = Astro.props;
 const headingId = `directory-${category.key}`;
-// 流水账在首页只保留分类入口；其他分类继续展示前三条目录。
-const showsEntryDirectory = category.key !== "journal";
-const visibleEntries = showsEntryDirectory ? entries.slice(0, 3) : [];
+const Heading = headingLevel;
+// 标题不再承担跳转；每个分类统一展示前四项，并把“更多”固定为最终入口。
+const visibleEntries = selectDirectoryPreviewEntries(entries);
 ---
 
 <section
-  class:list={["directory-column", { "directory-column-entry-only": !showsEntryDirectory }]}
+  class="directory-column"
+  data-directory-category={category.key}
   aria-labelledby={headingId}
 >
   <div class="column-heading">
     <span class="column-index" aria-hidden="true">{category.index}</span>
-    <h2 id={headingId}><a href={category.path}>{category.label}</a></h2>
+    <Heading id={headingId}>{category.label}</Heading>
   </div>
 
-  {
-    showsEntryDirectory && (
-      <ul class="directory-links">
-        {visibleEntries.map((entry) => (
-          <li>
-            <a href={getEntryHref(entry)}>{entry.title}</a>
-          </li>
-        ))}
-        <li><a class="more-link" href={category.path}>更多</a></li>
-      </ul>
-    )
-  }
+  <ul class="directory-links">
+    {visibleEntries.map((entry) => (
+      <li data-directory-entry>
+        <a href={getEntryHref(entry)}>{entry.title}</a>
+      </li>
+    ))}
+    <li class="directory-more-row">
+      <a
+        class="more-link"
+        href={category.path}
+        aria-label={`更多${category.label}`}
+        data-directory-more
+      >更多</a>
+    </li>
+  </ul>
 </section>

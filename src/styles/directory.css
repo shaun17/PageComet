@@ -19,11 +19,6 @@
   padding-inline-end: 0;
 }
 
-/* 流水账不在首页复制内容目录，分类标题本身就是唯一入口。 */
-.directory-column-entry-only .column-heading {
-  margin-bottom: 0;
-}
-
 .column-heading {
   display: flex;
   align-items: baseline;
@@ -31,24 +26,12 @@
   margin-bottom: 0.75em;
 }
 
-.column-heading h2 {
+.column-heading h2,
+.column-heading h3 {
   margin: 0;
   font-size: inherit;
   font-weight: 400;
   letter-spacing: inherit;
-}
-
-.column-heading h2 a {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35em;
-}
-
-/* 箭头始终可见，悬浮时只做短距离位移，保持目录的安静感。 */
-.column-heading h2 a::after {
-  display: inline-block;
-  content: "→";
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .directory-links a {
@@ -78,11 +61,11 @@
 }
 
 .directory-links {
-  display: flex;
+  display: grid;
   margin: 0;
   padding: 0;
-  flex-direction: column;
   font-size: inherit;
+  grid-template-rows: repeat(5, minmax(1.5em, auto));
   line-height: 1.5;
   list-style: none;
 }
@@ -98,20 +81,17 @@
   color: var(--text-muted);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .column-heading h2 a:hover::after {
-    transform: translateX(0.22em);
-  }
+/* 不插入空列表项，也让“更多”稳定落在目录标题下的第五行。 */
+.directory-more-row {
+  grid-row: 5;
+}
 
+@media (hover: hover) and (pointer: fine) {
   .directory-links a:hover::after {
     opacity: 0;
     transform: scaleX(0);
     transform-origin: right;
   }
-}
-
-.column-heading h2 a:focus-visible::after {
-  transform: translateX(0.22em);
 }
 
 /* 中等宽度改为两列，避免四个目录在平板竖屏下挤压标题与链接。 */

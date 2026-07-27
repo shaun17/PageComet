@@ -16,6 +16,14 @@ test("keeps directory breakpoints readable from tablet to mobile", async () => {
   const desktopRuleStart = styles.indexOf(selector);
   const mobileRuleStart = styles.lastIndexOf(selector);
 
+  assert.match(
+    styles,
+    /grid-template-rows:\s*repeat\(5, minmax\(1\.5em, auto\)\);/,
+  );
+  assert.match(styles, /\.directory-more-row\s*\{[^}]*grid-row:\s*5;/s);
+  assert.doesNotMatch(styles, /\.column-heading h2 a/);
+  assert.doesNotMatch(styles, /directory-column-entry-only/);
+
   assert.notEqual(desktopRuleStart, -1, "应保留桌面端相邻列分隔规则");
   assert.ok(
     mobileRuleStart > mobileBreakpointStart &&
@@ -50,4 +58,6 @@ test("keeps directory breakpoints readable from tablet to mobile", async () => {
     /@media\s*\((?:max-width:760px|width<=760px)\)\{[\s\S]*?\.directory-column\+\.directory-column\{(?=[^}]*padding-inline-start:0)(?=[^}]*border-inline-start:0)[^}]*\}/,
   );
   assert.match(builtStyles, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(builtStyles, /grid-template-rows:repeat\(5,minmax\(1\.5em,auto\)\)/);
+  assert.match(builtStyles, /\.directory-more-row\{grid-row:5\}/);
 });
