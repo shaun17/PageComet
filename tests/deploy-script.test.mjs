@@ -178,25 +178,26 @@ test(
     );
     const pidFile = path.join(temporaryDirectory, "descendant.pid");
     const descendantProgram = [
-      'const { writeFileSync } = require("node:fs");',
-      `writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));`,
       'process.on("SIGTERM", () => {});',
       "setInterval(() => {}, 1000);",
     ].join("");
     const parentProgram = [
+      'const { writeFileSync } = require("node:fs");',
       'const { spawn } = require("node:child_process");',
-      `spawn(process.execPath, ["-e", ${JSON.stringify(descendantProgram)}], { stdio: "ignore" });`,
+      `const descendant = spawn(process.execPath, ["-e", ${JSON.stringify(descendantProgram)}], { stdio: "ignore" });`,
+      `writeFileSync(${JSON.stringify(pidFile)}, String(descendant.pid));`,
       "setInterval(() => {}, 1000);",
     ].join("");
+    const timeoutMs = 2_000;
 
     try {
       await assert.rejects(
         runProcess(process.execPath, ["-e", parentProgram], {
           stdio: "ignore",
-          timeoutMs: 250,
+          timeoutMs,
           forceKillDelayMs: 100,
         }),
-        /执行超过 250 毫秒，已终止/,
+        new RegExp(`执行超过 ${timeoutMs} 毫秒，已终止`),
       );
       const descendantPid = Number(await readFile(pidFile, "utf8"));
       assert.ok(Number.isSafeInteger(descendantPid) && descendantPid > 0);
