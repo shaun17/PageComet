@@ -12,6 +12,7 @@ const expectedArticleRoutes = [
   "/works/atlas-notes/",
   "/works/focus-timer/",
   "/works/pocket-gallery/",
+  "/works/shared-link/",
   "/writing/writing-with-notion/",
 ];
 
@@ -25,23 +26,29 @@ const extractAnchors = (html) => html.match(/<a\b[^>]*>/gi) ?? [];
 const findAnchor = (html, href) =>
   extractAnchors(html).find((anchor) => anchor.includes(`href="${href}"`));
 
-/** 从最终首页依次提取目录编号、链接与标题，锁定用户看到的真实顺序。 */
+/** 从最终页面依次提取目录分类、编号与纯文本标题，锁定用户看到的真实顺序。 */
 const extractDirectoryColumns = (html) =>
   [...html.matchAll(
-    /<section class="[^"]*directory-column[^"]*"[^>]*>[\s\S]*?<span class="column-index"[^>]*>([^<]+)<\/span>[\s\S]*?<h2[^>]*><a href="([^"]+)">([^<]+)<\/a>/g,
-  )].map((match) => ({ index: match[1], href: match[2], label: match[3] }));
+    /<section class="[^"]*directory-column[^"]*" data-directory-category="([^"]+)"[^>]*>[\s\S]*?<span class="column-index"[^>]*>([^<]+)<\/span>[\s\S]*?<h2[^>]*>([^<]+)<\/h2>/g,
+  )].map((match) => ({ key: match[1], index: match[2], label: match[3] }));
 
 /** 只提取文章标题区的项目入口，避免页脚 GitHub 声明干扰组合断言。 */
 const extractProjectLinks = (html) =>
   html.match(/<nav class="project-links"[^>]*>[\s\S]*?<\/nav>/)?.[0] ?? "";
 
-/** 只提取首页指定分类的一列，验证流水账没有再次展开条目目录。 */
+/** 只提取指定分类的一列，逐项核对标题、条目与“更多”入口。 */
 const extractDirectoryColumn = (html, category) =>
   html.match(
     new RegExp(
-      `<section class="[^"]*directory-column[^"]*" aria-labelledby="directory-${category}">[\\s\\S]*?<\\/section>`,
+      `<section class="[^"]*directory-column[^"]*" data-directory-category="${category}"[^>]*>[\\s\\S]*?<\\/section>`,
     ),
   )?.[0] ?? "";
+
+/** 提取一列中真实文章的链接与标题，不把最终的“更多”混入内容快照。 */
+const extractDirectoryEntries = (column) =>
+  [...column.matchAll(
+    /<li data-directory-entry><a href="([^"]+)">([^<]+)<\/a><\/li>/g,
+  )].map((match) => ({ href: match[1], title: match[2] }));
 
 /** 把公开配置文字转换为 HTML 文本节点中的安全表示。 */
 const escapeHtmlText = (value) =>
@@ -75,8 +82,8 @@ const findStructuredDataNode = (data, type) =>
 /** 提取最终 HTML 的文档标题，验证页面之间不会继续共用同一个标题。 */
 const extractDocumentTitle = (html) => html.match(/<title>([^<]+)<\/title>/)?.[1];
 
-/** 首页保持极简四列，流水账只留下二级页面入口。 */
-test("builds the four-column homepage with a single journal entry point", async () => {
+/** 首页四列统一使用纯文本标题、最多四篇内容和第五行“更多”。 */
+test("builds consistent four-column directory previews on the homepage", async () => {
   const html = await readRoute();
 
   assert.ok(html.includes(`<html lang="${siteConfig.locale}">`));
@@ -121,10 +128,10 @@ test("builds the four-column homepage with a single journal entry point", async 
   assert.doesNotMatch(html, /偶尔记录生活、想法和正在发生的事。/);
   assert.equal((html.match(/class="directory-column(?: |")/g) ?? []).length, 4);
   assert.deepEqual(extractDirectoryColumns(html), [
-    { index: "01", href: "/career/", label: "职业经历" },
-    { index: "02", href: "/works/", label: "个人作品" },
-    { index: "03", href: "/writing/", label: "文稿" },
-    { index: "04", href: "/journal/", label: "流水账" },
+    { key: "career", index: "01", label: "职业经历" },
+    { key: "works", index: "02", label: "个人作品" },
+    { key: "writing", index: "03", label: "文稿" },
+    { key: "journal", index: "04", label: "流水账" },
   ]);
   assert.ok(findAnchor(html, "/career/"));
   assert.ok(findAnchor(html, "/works/"));
@@ -137,11 +144,40 @@ test("builds the four-column homepage with a single journal entry point", async 
     assert.doesNotMatch(anchor, /target=/);
   }
 
+  const expectedEntryCounts = { career: 2, works: 4, writing: 1, journal: 0 };
+  for (const category of siteConfig.categories) {
+    const column = extractDirectoryColumn(html, category.key);
+    const categoryPath = `/${category.key}/`;
+    const heading = column.match(/<h2[^>]*>[\s\S]*?<\/h2>/)?.[0] ?? "";
+    const entries = extractDirectoryEntries(column);
+    assert.ok(column, `首页应渲染 ${category.key} 目录`);
+    assert.equal(entries.length, expectedEntryCounts[category.key]);
+    assert.ok(entries.length <= 4);
+    assert.doesNotMatch(heading, /<a\b/);
+    assert.match(
+      column,
+      new RegExp(
+        `<li class="directory-more-row"><a class="more-link" href="${categoryPath}" aria-label="更多${category.label}" data-directory-more>更多<\\/a><\\/li>`,
+      ),
+    );
+  }
+
+  const worksColumn = extractDirectoryColumn(html, "works");
+  assert.equal((worksColumn.match(/<li\b/g) ?? []).length, 5);
+  assert.deepEqual(
+    extractDirectoryEntries(worksColumn).map((entry) => entry.href),
+    [
+      "/works/atlas-notes/",
+      "/works/focus-timer/",
+      "/works/pocket-gallery/",
+      "/works/shared-link/",
+    ],
+  );
+
   const journalColumn = extractDirectoryColumn(html, "journal");
-  assert.match(journalColumn, /directory-column-entry-only/);
+  assert.match(journalColumn, /class="directory-links"/);
   assert.ok(findAnchor(journalColumn, "/journal/"));
-  assert.doesNotMatch(journalColumn, /class="directory-links"/);
-  assert.doesNotMatch(journalColumn, /一段城市散步|用 Notion 写一篇文章|更多/);
+  assert.doesNotMatch(journalColumn, /data-directory-entry/);
   assert.equal((journalColumn.match(/<a\b/g) ?? []).length, 1);
 
   for (const contact of siteConfig.contacts) {
@@ -593,12 +629,10 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /border-block:1px solid var\(--line-strong\)/);
-  assert.match(css, /content:"→"/);
-  const journalDirectoryRule = css.match(
-    /\.directory-column-entry-only \.column-heading\{([^}]*)\}/,
-  )?.[1];
-  assert.ok(journalDirectoryRule);
-  assert.match(journalDirectoryRule, /margin-bottom:0/);
+  assert.match(css, /grid-template-rows:repeat\(5,minmax\(1\.5em,auto\)\)/);
+  assert.match(css, /\.directory-more-row\{grid-row:5\}/);
+  assert.doesNotMatch(css, /\.column-heading h2 a/);
+  assert.doesNotMatch(css, /directory-column-entry-only/);
   const journalFeedRule = css.match(/\.journal-feed\{([^}]*)\}/)?.[1];
   assert.ok(journalFeedRule);
   assert.match(journalFeedRule, /width:min\(100%,\s*var\(--journal-feed-width\)\)/);
