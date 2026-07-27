@@ -110,4 +110,12 @@ export const CONTENT_SNAPSHOT: ContentEntry[] = [
     externalUrl: "https://github.com/example/shared-link/",
     repositoryUrl: "https://github.com/example/shared-link/",
   }),
+  createExampleEntry({
+    id: "b5555555-5555-4555-8555-555555555555",
+    title: "Release Tracker",
+    slug: "release-tracker",
+    category: "works",
+    summary: "用于验证目录只展示前四项、分类页仍保留完整内容的第五个示例。",
+    order: 50,
+  }),
 ];
