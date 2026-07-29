@@ -34,6 +34,22 @@ test("writes the real-secret manifest with owner-only permissions", async () => 
   }
 });
 
+test(
+  "keeps library verification silent while returning its summary",
+  async (context) => {
+    const { root, distRoot } = await createStaticFixture();
+    const consoleLog = context.mock.method(console, "log");
+    try {
+      assert.deepEqual(await verifyStaticOutput({ distRoot }), {
+        verifiedTextFileCount: 1,
+      });
+      assert.equal(consoleLog.mock.callCount(), 0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+);
+
 test("detects every supported real-secret representation in extensionless output", async () => {
   const { root, distRoot } = await createStaticFixture();
   const secret = "cloudflare+/credential-value-2026";

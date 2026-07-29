@@ -258,7 +258,7 @@ export const verifyStaticOutput = async ({
     }
   }
 
-  console.log(`已验证 ${files.length} 个静态文本产物，未发现凭据或临时资源泄漏。`);
+  return { verifiedTextFileCount: files.length };
 };
 
 const isDirectExecution = process.argv[1]
@@ -267,7 +267,11 @@ const isDirectExecution = process.argv[1]
 
 if (isDirectExecution) {
   try {
-    await verifyStaticOutput();
+    const { verifiedTextFileCount } = await verifyStaticOutput();
+    // 仅命令行入口输出成功信息，库调用保持静默，避免污染 Node 测试运行器的消息通道。
+    console.log(
+      `已验证 ${verifiedTextFileCount} 个静态文本产物，未发现凭据或临时资源泄漏。`,
+    );
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
