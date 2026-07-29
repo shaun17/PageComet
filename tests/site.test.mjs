@@ -749,7 +749,7 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   );
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
-  assert.match(articleShellRule, /--article-content-width:46rem/);
+  assert.match(articleShellRule, /--article-content-width:57\.5rem/);
   const articleBodyRule = css.match(/\.article-shell article\{([^}]*)\}/)?.[1];
   assert.ok(articleBodyRule);
   assert.match(articleBodyRule, /margin-top:var\(--page-content-start-gap\)/);
