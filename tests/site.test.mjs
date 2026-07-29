@@ -19,6 +19,10 @@ const expectedArticleRoutes = [
   ...expectedDirectoryArticleRoutes,
   "/works/release-tracker/",
 ];
+const longArticleTitle =
+  "使用 Notion 与 Astro 构建内容网站的完整设计、开发和发布方法";
+const longArticleSummary =
+  "从内容模型、页面设计到静态构建和发布，逐步说明如何建立一套长期可维护的网站工作流，并验证长标题与长摘要在不同屏幕上的阅读体验。";
 
 /** 读取某个静态路由的最终 HTML，而不是只验证 Astro 源码。 */
 const readRoute = (path = "index.html") => readFile(new URL(path, buildRoot), "utf8");
@@ -285,7 +289,7 @@ test("builds article indexes and the journal feed", async () => {
   assert.equal(extractDocumentTitle(journal), `流水账 — ${siteConfig.brand.name}`);
   assert.equal(
     extractDocumentTitle(exampleWriting),
-    `用 Notion 写一篇文章 — ${siteConfig.brand.name}`,
+    `${longArticleTitle} — ${siteConfig.brand.name}`,
   );
   assert.equal(extractDocumentTitle(notFound), `页面不存在 — ${siteConfig.brand.name}`);
   assert.equal(new Set(titledPages.map(extractDocumentTitle)).size, titledPages.length);
@@ -325,7 +329,8 @@ test("builds article indexes and the journal feed", async () => {
   assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
   assert.match(exampleCareer, /负责设计系统与核心产品体验的职业经历。/);
   assert.match(exampleWork, /<h1>Atlas Notes<\/h1>/);
-  assert.match(exampleWriting, /<h1>用 Notion 写一篇文章<\/h1>/);
+  assert.ok(exampleWriting.includes(`<h1>${longArticleTitle}</h1>`));
+  assert.ok(exampleWriting.includes(`<p class="article-summary">${longArticleSummary}</p>`));
   assert.match(
     writing,
     /<ul class="writing-tags writing-tags-list" aria-label="文章标签">/,
@@ -543,7 +548,7 @@ test("builds article indexes and the journal feed", async () => {
 
   const writingStructuredData = extractStructuredData(exampleWriting);
   const blogPosting = findStructuredDataNode(writingStructuredData, "BlogPosting");
-  assert.equal(blogPosting.headline, "用 Notion 写一篇文章");
+  assert.equal(blogPosting.headline, longArticleTitle);
   assert.equal(blogPosting.datePublished, "2026-07-18");
   assert.equal(blogPosting.dateModified, "2026-07-18T09:00:00.000Z");
   assert.equal(blogPosting.articleSection, "文稿");
