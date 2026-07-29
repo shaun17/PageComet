@@ -30,7 +30,9 @@ const visibleEntries = selectDirectoryPreviewEntries(entries);
   <ul class="directory-links">
     {visibleEntries.map((entry) => (
       <li data-directory-entry>
-        <a href={getEntryHref(entry)}>{entry.title}</a>
+        <a href={getEntryHref(entry)}>
+          <span class="directory-link-title">{entry.title}</span>
+        </a>
       </li>
     ))}
     <li class="directory-more-row">

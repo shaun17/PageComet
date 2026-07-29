@@ -76,6 +76,24 @@
   align-items: center;
 }
 
+/* 只裁剪标题文字，保留链接本身的下划线动效与完整无障碍名称。 */
+.directory-links [data-directory-entry] {
+  min-width: 0;
+}
+
+.directory-links [data-directory-entry] a {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.directory-link-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .directory-links .more-link {
   margin-top: 0.25em;
   color: var(--text-muted);
