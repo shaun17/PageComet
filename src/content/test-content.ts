@@ -67,11 +67,12 @@ const portraitScreenshot = (id: string, alt: string): ContentBlock => ({
 
 const INTERNAL_ARTICLE: ContentEntry = {
   id: "11111111-2222-3333-4444-555555555555",
-  title: "用 Notion 写一篇文章",
+  title: "使用 Notion 与 Astro 构建内容网站的完整设计、开发和发布方法",
   slug: "writing-with-notion",
   category: "writing",
   status: "published",
-  summary: "这篇构建夹具验证 Notion 正文会生成完整的站内静态页面。",
+  summary:
+    "从内容模型、页面设计到静态构建和发布，逐步说明如何建立一套长期可维护的网站工作流，并验证长标题与长摘要在不同屏幕上的阅读体验。",
   publishedAt: "2026-07-18",
   createdAt: "2026-07-18T08:00:00.000Z",
   updatedAt: "2026-07-18T09:00:00.000Z",

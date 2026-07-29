@@ -1,6 +1,7 @@
-/* 阅读栏保持左侧锚点，只适度放宽以减少大屏右侧留白。 */
+/* 标题区可比正文更宽，正文仍保持左侧锚点与舒适阅读行长。 */
 .article-shell {
   --article-content-width: 46rem;
+  --article-header-width: 60rem;
 }
 
 /* 返回导航与文章主体只保留必要的分组距离，避免标题区出现无内容的大块内边距。 */
@@ -10,7 +11,8 @@
 }
 
 .article-header {
-  max-width: 52rem;
+  width: 100%;
+  max-width: var(--article-header-width);
 }
 
 .article-meta {
@@ -29,22 +31,23 @@
   margin-left: 0.7rem;
 }
 
+/* 标题与摘要用 em 兼顾中文全角字和拉丁字符，避免 ch 令中文过早换行。 */
 .article-header h1 {
-  max-width: 13ch;
+  max-width: min(100%, 18em);
   margin: 0;
-  font-size: clamp(2.5rem, 4.4vw, 4.25rem);
+  font-size: clamp(2.5rem, 4vw, 4rem);
   font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 1.04;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
   text-wrap: balance;
 }
 
 .article-summary {
-  max-width: 40ch;
-  margin: 1.5rem 0 0;
+  max-width: min(100%, 36em);
+  margin: clamp(1.25rem, 2vw, 1.75rem) 0 0;
   color: var(--text-muted);
   font-size: 0.95rem;
-  line-height: 1.7;
+  line-height: 1.72;
   text-wrap: pretty;
 }
 
@@ -140,11 +143,14 @@
 
 @media (max-width: 600px) {
   .article-header h1 {
-    font-size: clamp(2.4rem, 12vw, 3.5rem);
+    font-size: clamp(2.25rem, 9.5vw, 2.5rem);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
   }
 
   .article-summary {
     font-size: 0.95rem;
+    line-height: 1.7;
   }
 
   .project-links {
