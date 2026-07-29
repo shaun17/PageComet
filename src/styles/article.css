@@ -1,6 +1,6 @@
-/* 标题区可比正文更宽，正文仍保持左侧锚点与舒适阅读行长。 */
+/* 正文栏由 46rem 放宽 25%，与标题区形成连续阅读轴，减少宽屏下的左右分屏感。 */
 .article-shell {
-  --article-content-width: 46rem;
+  --article-content-width: 57.5rem;
   --article-header-width: 60rem;
 }
 

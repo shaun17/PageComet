@@ -4,8 +4,8 @@ import test from "node:test";
 
 const stylesUrl = new URL("../src/styles/article.css", import.meta.url);
 
-/** 长标题区独立放宽，但正文继续保持舒适阅读宽度。 */
-test("gives long article titles and summaries a balanced responsive measure", async () => {
+/** 正文栏精确放宽 25%，并让文章各层级继续共享同一条阅读轴。 */
+test("keeps the wider article reading column visually unified", async () => {
   const styles = await readFile(stylesUrl, "utf8");
   const shellRule = styles.match(/\.article-shell\s*\{([\s\S]*?)\n\}/)?.[1];
   const headerRule = styles.match(/\.article-header\s*\{([\s\S]*?)\n\}/)?.[1];
@@ -20,7 +20,7 @@ test("gives long article titles and summaries a balanced responsive measure", as
   assert.ok(headerRule);
   assert.ok(titleRule);
   assert.ok(summaryRule);
-  assert.match(shellRule, /--article-content-width:\s*46rem;/);
+  assert.match(shellRule, /--article-content-width:\s*57\.5rem;/);
   assert.match(shellRule, /--article-header-width:\s*60rem;/);
   assert.match(headerRule, /width:\s*100%;/);
   assert.match(headerRule, /max-width:\s*var\(--article-header-width\);/);
@@ -33,11 +33,24 @@ test("gives long article titles and summaries a balanced responsive measure", as
   assert.match(summaryRule, /line-height:\s*1\.72;/);
   assert.match(summaryRule, /text-wrap:\s*pretty;/);
   assert.doesNotMatch(summaryRule, /max-width:[^;]*ch;/);
-  assert.match(
-    styles,
-    /\.notion-content\s*\{[^}]*max-width:\s*var\(--article-content-width\);/s,
-    "放宽标题区不能连带放宽正文阅读栏",
-  );
+  /* 分隔线、项目入口、媒体、正文与返回导航必须整体加宽，避免再次出现局部半栏。 */
+  for (const selector of [
+    ".article-divider",
+    ".project-links",
+    ".article-cover",
+    ".notion-content",
+    ".article-return",
+  ]) {
+    const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(
+      styles,
+      new RegExp(
+        `${escapedSelector}\\s*\\{[^}]*max-width:\\s*var\\(--article-content-width\\);`,
+        "s",
+      ),
+      `${selector} 应共享放宽后的文章阅读宽度`,
+    );
+  }
 
   const compactRules = styles.match(
     /@media \(max-width: 600px\)\s*\{([\s\S]*)\n\}/,
