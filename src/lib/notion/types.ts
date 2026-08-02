@@ -49,6 +49,7 @@ export type ContentBlockType =
   | "heading_1"
   | "heading_2"
   | "heading_3"
+  | "heading_4"
   | "bulleted_list_item"
   | "numbered_list_item"
   | "to_do"

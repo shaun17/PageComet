@@ -7,6 +7,7 @@ import { createTestViteServer } from "./vite-test-server.mjs";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 let vite;
 let loadPublishedContent;
+let normalizeNotionBlock;
 let normalizeContentPage;
 let resolvePropertyNames;
 let validateContentSchema;
@@ -15,6 +16,7 @@ let validateContentSchema;
 before(async () => {
   vite = await createTestViteServer(projectRoot);
   ({ loadPublishedContent } = await vite.ssrLoadModule("/src/lib/notion/content.ts"));
+  ({ normalizeNotionBlock } = await vite.ssrLoadModule("/src/lib/notion/blocks.ts"));
   ({ normalizeContentPage, resolvePropertyNames, validateContentSchema } =
     await vite.ssrLoadModule("/src/lib/notion/schema.ts"));
 });
@@ -158,6 +160,48 @@ test("rejects malformed empty-site environment values", async () => {
       /ALLOW_EMPTY_SITE 仅支持 true 或 false/,
     );
   });
+});
+
+/** Notion API 已正式返回 heading_4，规范化时必须保留其富文本与类型。 */
+test("normalizes Notion heading 4 as a supported content block", () => {
+  const normalized = normalizeNotionBlock(
+    {
+      object: "block",
+      id: "heading-four",
+      type: "heading_4",
+      has_children: false,
+      heading_4: {
+        rich_text: richTextProperty("rich_text", "四级标题").rich_text,
+        color: "default",
+        is_toggleable: false,
+      },
+    },
+    [],
+  );
+
+  assert.equal(normalized.type, "heading_4");
+  assert.equal(normalized.richText[0]?.plainText, "四级标题");
+  assert.equal(normalized.color, "default");
+});
+
+/** 只放行明确实现的层级，未来未知标题仍保持 fail-closed。 */
+test("keeps unknown heading levels unsupported", () => {
+  const normalized = normalizeNotionBlock(
+    {
+      object: "block",
+      id: "heading-five",
+      type: "heading_5",
+      has_children: false,
+      heading_5: {
+        rich_text: richTextProperty("rich_text", "未知标题").rich_text,
+        color: "default",
+      },
+    },
+    [],
+  );
+
+  assert.equal(normalized.type, "unsupported");
+  assert.equal(normalized.unsupportedType, "heading_5");
 });
 
 test("maps project and repository URLs from Notion into one content entry", () => {

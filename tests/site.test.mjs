@@ -347,6 +347,10 @@ test("builds article indexes and the journal feed", async () => {
   assert.ok(exampleWriting.includes(`<h1>${longArticleTitle}</h1>`));
   assert.ok(exampleWriting.includes(`<p class="article-summary">${longArticleSummary}</p>`));
   assert.match(
+    exampleWriting,
+    /<h5>四级标题可以稳定显示<\/h5><p>四级标题的子内容也会保留<\/p>/,
+  );
+  assert.match(
     writing,
     /<ul class="writing-tags writing-tags-list" aria-label="文章标签">/,
   );
@@ -753,6 +757,10 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   const articleBodyRule = css.match(/\.article-shell article\{([^}]*)\}/)?.[1];
   assert.ok(articleBodyRule);
   assert.match(articleBodyRule, /margin-top:var\(--page-content-start-gap\)/);
+  const notionHeadingFourRule = css.match(/\.notion-content h5\{([^}]*)\}/)?.[1];
+  assert.ok(notionHeadingFourRule);
+  assert.match(notionHeadingFourRule, /font-size:1rem/);
+  assert.match(notionHeadingFourRule, /font-weight:650/);
   const articleHeaderRule = css.match(/\.article-header\{([^}]*)\}/)?.[1];
   assert.ok(articleHeaderRule);
   assert.doesNotMatch(articleHeaderRule, /padding-top/);

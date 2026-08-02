@@ -126,6 +126,9 @@ const INTERNAL_ARTICLE: ContentEntry = {
       table: { hasColumnHeader: false, hasRowHeader: false },
     },
     block("heading", "heading_2", [text("内容如何更新")]),
+    block("heading-four", "heading_4", [text("四级标题可以稳定显示")], [
+      block("heading-four-child", "paragraph", [text("四级标题的子内容也会保留")]),
+    ]),
     block("paragraph-link", "paragraph", [
       text("在数据库里编辑完成后，将状态改为“已发布”，再触发一次 Cloudflare Pages 构建。"),
     ]),
