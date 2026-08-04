@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   COUNTER_INTERVAL_MS,
+  PROGRESS_INTERVAL_MS,
   createDecimalYearTicker,
   getDecimalYearSnapshot,
 } from "../src/lib/decimal-year.mjs";
@@ -82,15 +83,16 @@ test("describes the annual countdown in one stable accessible label", () => {
   );
 });
 
-test("runs only while visible and motion is allowed", () => {
-  assert.equal(COUNTER_INTERVAL_MS, 100);
+test("runs the default value at 20ms and progress at 100ms without leaking timers", () => {
+  assert.equal(COUNTER_INTERVAL_MS, 20);
+  assert.equal(PROGRESS_INTERVAL_MS, 100);
 
   const renders = [];
   const scheduled = [];
   const cancelled = [];
   let nextTimerId = 1;
   const ticker = createDecimalYearTicker({
-    render: () => renders.push("render"),
+    render: (parts) => renders.push(parts),
     schedule: (callback, intervalMs) => {
       const timer = { id: nextTimerId, callback, intervalMs };
       nextTimerId += 1;
@@ -101,23 +103,90 @@ test("runs only while visible and motion is allowed", () => {
   });
 
   ticker.sync({ hidden: false, reducedMotion: false });
-  assert.deepEqual(renders, ["render"]);
-  assert.equal(scheduled.length, 1);
+  assert.deepEqual(renders, [{ value: true, progress: true }]);
+  assert.equal(scheduled.length, 2);
   assert.equal(scheduled[0].intervalMs, COUNTER_INTERVAL_MS);
-  scheduled[0].callback();
-  assert.deepEqual(renders, ["render", "render"]);
+  assert.equal(scheduled[1].intervalMs, PROGRESS_INTERVAL_MS);
+
+  for (let tick = 0; tick < 5; tick += 1) scheduled[0].callback();
+  scheduled[1].callback();
+  assert.deepEqual(renders.slice(1), [
+    { value: true, progress: false },
+    { value: true, progress: false },
+    { value: true, progress: false },
+    { value: true, progress: false },
+    { value: true, progress: false },
+    { value: false, progress: true },
+  ]);
 
   ticker.sync({ hidden: false, reducedMotion: true });
-  assert.deepEqual(cancelled, [1]);
-  assert.deepEqual(renders, ["render", "render", "render"]);
-  assert.equal(scheduled.length, 1);
+  assert.deepEqual(cancelled, [1, 2]);
+  assert.deepEqual(renders.at(-1), { value: true, progress: true });
+  assert.equal(scheduled.length, 2);
 
   ticker.sync({ hidden: true, reducedMotion: false });
-  assert.deepEqual(renders, ["render", "render", "render", "render"]);
-  assert.equal(scheduled.length, 1);
+  assert.deepEqual(renders.at(-1), { value: true, progress: true });
+  assert.equal(scheduled.length, 2);
 
   ticker.sync({ hidden: false, reducedMotion: false });
-  assert.equal(scheduled.length, 2);
+  assert.equal(scheduled.length, 4);
+  assert.equal(scheduled[2].intervalMs, COUNTER_INTERVAL_MS);
+  assert.equal(scheduled[3].intervalMs, PROGRESS_INTERVAL_MS);
   ticker.stop();
-  assert.deepEqual(cancelled, [1, 2]);
+  ticker.stop();
+  assert.deepEqual(cancelled, [1, 2, 3, 4]);
+});
+
+test("updates the complete progress group together when the two cadences cross a year", () => {
+  const nextYearStart = new Date(2027, 0, 1).getTime();
+  let nowMs = nextYearStart - 10;
+  const state = { value: "", progress: undefined };
+  const scheduled = [];
+  const ticker = createDecimalYearTicker({
+    render: ({ value, progress }) => {
+      const snapshot = getDecimalYearSnapshot(new Date(nowMs));
+      if (value) state.value = snapshot.value;
+      if (progress) {
+        state.progress = {
+          currentYear: snapshot.currentYear,
+          nextYear: snapshot.nextYear,
+          percentage: snapshot.progressPercentage,
+          fill: snapshot.progressPosition,
+          markerStart: snapshot.progressPosition,
+          markerEnd: snapshot.progressPosition,
+        };
+      }
+    },
+    schedule: (callback, intervalMs) => {
+      scheduled.push({ callback, intervalMs });
+      return scheduled.length;
+    },
+    cancel: () => {},
+  });
+
+  ticker.sync({ hidden: false, reducedMotion: false });
+  assert.match(state.value, /^2026\./);
+  assert.deepEqual(state.progress, {
+    currentYear: "2026",
+    nextYear: "2027",
+    percentage: "99.9999999%",
+    fill: "99.9999999",
+    markerStart: "99.9999999",
+    markerEnd: "99.9999999",
+  });
+
+  nowMs = nextYearStart + 10;
+  scheduled.find(({ intervalMs }) => intervalMs === COUNTER_INTERVAL_MS).callback();
+  assert.match(state.value, /^2027\./);
+  assert.equal(state.progress.currentYear, "2026");
+
+  scheduled.find(({ intervalMs }) => intervalMs === PROGRESS_INTERVAL_MS).callback();
+  assert.deepEqual(state.progress, {
+    currentYear: "2027",
+    nextYear: "2028",
+    percentage: "0.0000000%",
+    fill: "0.0000000",
+    markerStart: "0.0000000",
+    markerEnd: "0.0000000",
+  });
 });
