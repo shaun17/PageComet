@@ -71,29 +71,86 @@
   transition: color 180ms ease;
 }
 
-/* 两个 30 字符的等宽状态叠放，交叉淡化时不改变自身或后续内容的位置。 */
+/* 两个 28 字符宽的状态叠放，交叉淡化时不改变自身或后续内容的位置。 */
 .decimal-year-values {
   display: inline-grid;
-  width: 30ch;
+  width: 28ch;
   letter-spacing: 0;
 }
 
 .decimal-year-value {
   grid-area: 1 / 1;
   width: 100%;
-  transition: opacity 160ms ease;
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.decimal-year-progress {
+  transform: translateY(0);
 }
 
 .decimal-year-timeline {
   display: grid;
-  grid-template-columns: 1ch 4ch 7ch 6ch 7ch 4ch 1ch;
+  grid-template-columns: 4ch 18ch 4ch;
+  column-gap: 1ch;
   align-items: baseline;
   opacity: 0;
+  transform: translateY(0.12em);
 }
 
-.decimal-year-boundary,
-.decimal-year-track {
+.decimal-year-endpoint-next {
   color: var(--text-muted);
+  text-align: right;
+}
+
+/* 百分比悬在真实比例细轨上方；一深一浅两段分别表达已过与未到。 */
+.decimal-year-meter {
+  position: relative;
+  display: block;
+  height: 1.2em;
+  min-width: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.decimal-year-percentage {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  width: 11ch;
+  font-size: 0.88em;
+  letter-spacing: -0.015em;
+  text-align: center;
+}
+
+.decimal-year-meter-track {
+  position: absolute;
+  right: 0;
+  bottom: -0.08em;
+  left: 0;
+  width: 100%;
+  height: 0.42em;
+  overflow: visible;
+}
+
+.decimal-year-meter-base,
+.decimal-year-meter-fill,
+.decimal-year-meter-marker {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.decimal-year-meter-base {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.decimal-year-meter-fill,
+.decimal-year-meter-marker {
+  stroke: var(--text-primary);
+  stroke-linecap: round;
+  stroke-width: 1;
 }
 
 .decimal-year:focus-visible {
@@ -142,11 +199,13 @@
   .decimal-year:hover .decimal-year-progress,
   .decimal-year:focus-visible .decimal-year-progress {
     opacity: 0;
+    transform: translateY(-0.08em);
   }
 
   .decimal-year:hover .decimal-year-timeline,
   .decimal-year:focus-visible .decimal-year-timeline {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 

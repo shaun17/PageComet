@@ -125,12 +125,24 @@ test("builds consistent four-column directory previews on the homepage", async (
   }
   assert.match(html, /class="decimal-year" data-decimal-year tabindex="0"/);
   assert.match(html, /YEAR \/ /);
-  assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}\[\.\d{4}\]</);
+  assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}\.\d{4}</);
   assert.match(html, /data-decimal-year-current[^>]*>\d{4}</);
-  assert.equal((html.match(/class="decimal-year-track"/g) ?? []).length, 2);
-  assert.match(html, /data-decimal-year-percentage[^>]*>\d{2}\.\d{2}%</);
+  assert.match(html, /class="decimal-year-meter-base"/);
+  assert.match(html, /data-decimal-year-meter-fill/);
+  assert.match(html, /data-decimal-year-meter-marker/);
+  assert.match(html, /data-decimal-year-percentage[^>]*>\d{1,2}\.\d{7}%</);
+  const meterFillPosition = html.match(
+    /data-decimal-year-meter-fill[^>]*\bx2="(\d{1,2}\.\d{7})"/,
+  )?.[1];
+  const meterMarkerPositions = html.match(
+    /data-decimal-year-meter-marker[^>]*\bx1="(\d{1,2}\.\d{7})"[^>]*\bx2="(\d{1,2}\.\d{7})"/,
+  );
+  assert.ok(meterFillPosition);
+  assert.equal(meterMarkerPositions?.[1], meterFillPosition);
+  assert.equal(meterMarkerPositions?.[2], meterFillPosition);
   assert.match(html, /data-decimal-year-next[^>]*>\d{4}</);
   assert.match(html, /\d{4} 年已过去 \d+\.\d{2}%，正在倒计时至 \d{4} 年/);
+  assert.doesNotMatch(html, /decimal-year-boundary|======&gt;/);
   assert.doesNotMatch(html, /data-decimal-year-remaining/);
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.doesNotMatch(
@@ -712,23 +724,35 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);
   const decimalYearValuesRule = css.match(/\.decimal-year-values\{([^}]*)\}/)?.[1];
   assert.ok(decimalYearValuesRule);
-  assert.match(decimalYearValuesRule, /width:30ch/);
+  assert.match(decimalYearValuesRule, /width:28ch/);
   assert.match(decimalYearValuesRule, /letter-spacing:0/);
   const decimalYearTimelineRule = css.match(/\.decimal-year-timeline\{([^}]*)\}/)?.[1];
   assert.ok(decimalYearTimelineRule);
   assert.match(
     decimalYearTimelineRule,
-    /grid-template-columns:1ch 4ch 7ch 6ch 7ch 4ch 1ch/,
+    /grid-template-columns:4ch 18ch 4ch/,
   );
+  assert.match(decimalYearTimelineRule, /column-gap:1ch/);
   assert.match(decimalYearTimelineRule, /opacity:0/);
+  const decimalYearPercentageRule = css.match(
+    /\.decimal-year-percentage\{([^}]*)\}/,
+  )?.[1];
+  assert.ok(decimalYearPercentageRule);
+  assert.match(decimalYearPercentageRule, /width:11ch/);
+  assert.match(decimalYearPercentageRule, /text-align:center/);
+  assert.match(css, /\.decimal-year-meter-base\{stroke:var\(--line\);stroke-width:1px\}/);
+  assert.match(
+    css,
+    /\.decimal-year-meter-fill,\.decimal-year-meter-marker\{stroke:var\(--text-primary\);stroke-linecap:round;stroke-width:1px\}/,
+  );
   assert.doesNotMatch(css, /\.decimal-year:focus \.decimal-year-/);
   assert.match(
     css,
-    /\.decimal-year:hover \.decimal-year-progress,\.decimal-year:focus-visible \.decimal-year-progress\{opacity:0\}/,
+    /\.decimal-year:hover \.decimal-year-progress,\.decimal-year:focus-visible \.decimal-year-progress\{opacity:0;transform:translateY\(-\.08em\)\}/,
   );
   assert.match(
     css,
-    /\.decimal-year:hover \.decimal-year-timeline,\.decimal-year:focus-visible \.decimal-year-timeline\{opacity:1\}/,
+    /\.decimal-year:hover \.decimal-year-timeline,\.decimal-year:focus-visible \.decimal-year-timeline\{opacity:1;transform:translateY\(0\)\}/,
   );
   const animatedUnderlineRule = css.match(/\.animated-underline\{([^}]*)\}/)?.[1];
   assert.ok(animatedUnderlineRule);
