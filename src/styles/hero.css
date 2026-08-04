@@ -71,21 +71,28 @@
   transition: color 180ms ease;
 }
 
-/* 两个等宽数字叠放，悬浮时交叉淡化，不引起后续内容水平位移。 */
+/* 两个 30 字符的等宽状态叠放，交叉淡化时不改变自身或后续内容的位置。 */
 .decimal-year-values {
   display: inline-grid;
+  width: 30ch;
+  letter-spacing: 0;
 }
 
 .decimal-year-value {
   grid-area: 1 / 1;
+  width: 100%;
   transition: opacity 160ms ease;
 }
 
-.decimal-year-remaining {
+.decimal-year-timeline {
+  display: grid;
+  grid-template-columns: 1ch 4ch 7ch 6ch 7ch 4ch 1ch;
+  align-items: baseline;
   opacity: 0;
 }
 
-.decimal-year:focus {
+.decimal-year-boundary,
+.decimal-year-track {
   color: var(--text-muted);
 }
 
@@ -93,14 +100,6 @@
   border-radius: 0.12rem;
   outline: 2px solid currentColor;
   outline-offset: 0.24rem;
-}
-
-.decimal-year:focus .decimal-year-progress {
-  opacity: 0;
-}
-
-.decimal-year:focus .decimal-year-remaining {
-  opacity: 1;
 }
 
 /* 数字本身已经明确表达年份，省去额外标签以维持单一信息层级。 */
@@ -140,11 +139,13 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .decimal-year:hover .decimal-year-progress {
+  .decimal-year:hover .decimal-year-progress,
+  .decimal-year:focus-visible .decimal-year-progress {
     opacity: 0;
   }
 
-  .decimal-year:hover .decimal-year-remaining {
+  .decimal-year:hover .decimal-year-timeline,
+  .decimal-year:focus-visible .decimal-year-timeline {
     opacity: 1;
   }
 }

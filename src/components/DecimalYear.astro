@@ -1,26 +1,26 @@
 ---
 import {
-  formatDecimalYear,
-  formatRemainingYear,
-  formatYearProgressLabel,
-  formatYearRemainingLabel,
   FULL_DECIMAL_PLACES,
+  getDecimalYearSnapshot,
 } from "../lib/decimal-year.mjs";
 
 // 静态 HTML 先提供构建时的真实值，JavaScript 加载前也不会出现空白或从零跳变。
-const initialNow = new Date();
-const initialValue = formatDecimalYear(initialNow, FULL_DECIMAL_PLACES);
-const initialRemainingValue = formatRemainingYear(initialNow, FULL_DECIMAL_PLACES);
-const initialLabel = `${formatYearProgressLabel(initialNow)}；${formatYearRemainingLabel(initialNow)}`;
+const initialSnapshot = getDecimalYearSnapshot(new Date(), FULL_DECIMAL_PLACES);
 ---
 
 <p class="decimal-year" data-decimal-year tabindex="0">
-  <span class="decimal-year-label" data-decimal-year-label>{initialLabel}</span>
+  <span class="decimal-year-label" data-decimal-year-label>{initialSnapshot.label}</span>
   <span class="decimal-year-prefix" aria-hidden="true">YEAR / </span>
   <span class="decimal-year-values" aria-hidden="true">
-    <span class="decimal-year-value decimal-year-progress" data-decimal-year-value>{initialValue}</span>
-    <span class="decimal-year-value decimal-year-remaining" data-decimal-year-remaining>
-      {initialRemainingValue}
+    <span class="decimal-year-value decimal-year-progress" data-decimal-year-value>{initialSnapshot.value}</span>
+    <span class="decimal-year-value decimal-year-timeline" data-decimal-year-timeline>
+      <span class="decimal-year-boundary">[</span>
+      <span data-decimal-year-current>{initialSnapshot.currentYear}</span>
+      <span class="decimal-year-track">======&gt;</span>
+      <span class="decimal-year-percentage" data-decimal-year-percentage>{initialSnapshot.displayProgressPercentage}</span>
+      <span class="decimal-year-track">======&gt;</span>
+      <span data-decimal-year-next>{initialSnapshot.nextYear}</span>
+      <span class="decimal-year-boundary">]</span>
     </span>
   </span>
 </p>
@@ -28,28 +28,29 @@ const initialLabel = `${formatYearProgressLabel(initialNow)}；${formatYearRemai
 <script>
   import {
     createDecimalYearTicker,
-    formatDecimalYear,
-    formatRemainingYear,
-    formatYearProgressLabel,
-    formatYearRemainingLabel,
+    getDecimalYearSnapshot,
   } from "../lib/decimal-year.mjs";
 
   const counter = document.querySelector<HTMLElement>("[data-decimal-year]");
   const value = counter?.querySelector<HTMLElement>("[data-decimal-year-value]");
-  const remainingValue = counter?.querySelector<HTMLElement>("[data-decimal-year-remaining]");
+  const currentYear = counter?.querySelector<HTMLElement>("[data-decimal-year-current]");
+  const percentage = counter?.querySelector<HTMLElement>("[data-decimal-year-percentage]");
+  const nextYear = counter?.querySelector<HTMLElement>("[data-decimal-year-next]");
   const label = counter?.querySelector<HTMLElement>("[data-decimal-year-label]");
 
-  if (counter && value && remainingValue && label) {
+  if (counter && value && currentYear && percentage && nextYear && label) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    /** 同步正向进度与反向倒计时，并仅在百分比实际变化时更新无障碍文案。 */
-    const renderCounter = (decimalPlaces: number) => {
-      const now = new Date();
-      value.textContent = formatDecimalYear(now, decimalPlaces);
-      remainingValue.textContent = formatRemainingYear(now, decimalPlaces);
+    /** 同步带下一年终点的十进制年份与悬浮态年度进度。 */
+    const renderCounter = () => {
+      const snapshot = getDecimalYearSnapshot(new Date());
+      value.textContent = snapshot.value;
+      currentYear.textContent = snapshot.currentYear;
+      percentage.textContent = snapshot.displayProgressPercentage;
+      nextYear.textContent = snapshot.nextYear;
 
-      const nextLabel = `${formatYearProgressLabel(now)}；${formatYearRemainingLabel(now)}`;
-      if (label.textContent !== nextLabel) label.textContent = nextLabel;
+      // 百分比变化时才更新读屏文案，避免持续改写无障碍树。
+      if (label.textContent !== snapshot.label) label.textContent = snapshot.label;
     };
 
     // 计时器独立管理启动和停止，避免页面隐藏后仍持续刷新 DOM。

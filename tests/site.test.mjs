@@ -125,9 +125,13 @@ test("builds consistent four-column directory previews on the homepage", async (
   }
   assert.match(html, /class="decimal-year" data-decimal-year tabindex="0"/);
   assert.match(html, /YEAR \/ /);
-  assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}</);
-  assert.match(html, /data-decimal-year-remaining[^>]*>\s*\d{18,19}\.\d{4}\s*</);
-  assert.match(html, /距离 \d{4} 年还有 \d+\.\d{2}%/);
+  assert.match(html, /data-decimal-year-value[^>]*>\d{4}\.\d{18}\[\.\d{4}\]</);
+  assert.match(html, /data-decimal-year-current[^>]*>\d{4}</);
+  assert.equal((html.match(/class="decimal-year-track"/g) ?? []).length, 2);
+  assert.match(html, /data-decimal-year-percentage[^>]*>\d{2}\.\d{2}%</);
+  assert.match(html, /data-decimal-year-next[^>]*>\d{4}</);
+  assert.match(html, /\d{4} 年已过去 \d+\.\d{2}%，正在倒计时至 \d{4} 年/);
+  assert.doesNotMatch(html, /data-decimal-year-remaining/);
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.doesNotMatch(
     removeStructuredDataScripts(html),
@@ -706,8 +710,26 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(audioRule, /display:block/);
   assert.match(audioRule, /width:100%/);
   assert.doesNotMatch(css, /\.decimal-year:hover\{color:/);
-  assert.match(css, /\.decimal-year:hover \.decimal-year-progress\{opacity:0\}/);
-  assert.match(css, /\.decimal-year:hover \.decimal-year-remaining\{opacity:1\}/);
+  const decimalYearValuesRule = css.match(/\.decimal-year-values\{([^}]*)\}/)?.[1];
+  assert.ok(decimalYearValuesRule);
+  assert.match(decimalYearValuesRule, /width:30ch/);
+  assert.match(decimalYearValuesRule, /letter-spacing:0/);
+  const decimalYearTimelineRule = css.match(/\.decimal-year-timeline\{([^}]*)\}/)?.[1];
+  assert.ok(decimalYearTimelineRule);
+  assert.match(
+    decimalYearTimelineRule,
+    /grid-template-columns:1ch 4ch 7ch 6ch 7ch 4ch 1ch/,
+  );
+  assert.match(decimalYearTimelineRule, /opacity:0/);
+  assert.doesNotMatch(css, /\.decimal-year:focus \.decimal-year-/);
+  assert.match(
+    css,
+    /\.decimal-year:hover \.decimal-year-progress,\.decimal-year:focus-visible \.decimal-year-progress\{opacity:0\}/,
+  );
+  assert.match(
+    css,
+    /\.decimal-year:hover \.decimal-year-timeline,\.decimal-year:focus-visible \.decimal-year-timeline\{opacity:1\}/,
+  );
   const animatedUnderlineRule = css.match(/\.animated-underline\{([^}]*)\}/)?.[1];
   assert.ok(animatedUnderlineRule);
   assert.match(animatedUnderlineRule, /transition:color \.22s/);
