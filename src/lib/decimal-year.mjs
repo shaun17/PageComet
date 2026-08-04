@@ -1,5 +1,6 @@
 export const FULL_DECIMAL_PLACES = 18;
-export const COUNTER_INTERVAL_MS = 20;
+export const PROGRESS_DECIMAL_PLACES = 7;
+export const COUNTER_INTERVAL_MS = 100;
 
 /** 校验日期并返回访客本地年份的起止毫秒，使数字与当前日历年份一致。 */
 const getLocalYearRange = (date) => {
@@ -31,17 +32,20 @@ const formatFractionDigits = (numerator, denominator, decimalPlaces) => {
     .padStart(decimalPlaces, "0");
 };
 
-/** 将时间比例转换成保留两位小数的百分比。 */
-const formatPercentage = (numerator, denominator) => {
-  const percentageHundredths = (numerator * 10_000n) / denominator;
-  const whole = percentageHundredths / 100n;
-  const decimal = (percentageHundredths % 100n).toString().padStart(2, "0");
+/** 按指定精度格式化百分比，使用 BigInt 截断避免浮点数在边界处越界。 */
+const formatPercentage = (numerator, denominator, decimalPlaces) => {
+  const decimalScale = 10n ** BigInt(decimalPlaces);
+  const scaledPercentage = (numerator * 100n * decimalScale) / denominator;
+  const whole = scaledPercentage / decimalScale;
+  const decimal = (scaledPercentage % decimalScale)
+    .toString()
+    .padStart(decimalPlaces, "0");
   return `${whole}.${decimal}%`;
 };
 
 /**
- * 生成同一时刻的年度倒计时快照，保证静态态、悬浮态和无障碍文案使用同一组年份。
- * 百分比在可见进度条中固定为六个字符，年初补零后也不会引发布局跳动。
+ * 生成同一时刻的年度倒计时快照，保证静态态、进度轨道和无障碍文案使用同一组年份。
+ * 可见百分比保留七位小数，足以在 100ms 刷新周期内持续产生可见变化。
  */
 export const getDecimalYearSnapshot = (
   date,
@@ -54,17 +58,22 @@ export const getDecimalYearSnapshot = (
   const fraction = places === 0
     ? ""
     : `.${formatFractionDigits(elapsed, duration, places)}`;
-  const progressPercentage = formatPercentage(elapsed, duration);
+  const progressPercentage = formatPercentage(
+    elapsed,
+    duration,
+    PROGRESS_DECIMAL_PLACES,
+  );
+  const accessibleProgressPercentage = formatPercentage(elapsed, duration, 2);
   const currentYear = String(year);
   const nextYear = String(year + 1);
 
   return {
     currentYear,
     nextYear,
-    value: `${currentYear}${fraction}[.${nextYear}]`,
+    value: `${currentYear}${fraction}.${nextYear}`,
     progressPercentage,
-    displayProgressPercentage: progressPercentage.padStart(6, "0"),
-    label: `${currentYear} 年已过去 ${progressPercentage}，正在倒计时至 ${nextYear} 年`,
+    progressPosition: progressPercentage.slice(0, -1),
+    label: `${currentYear} 年已过去 ${accessibleProgressPercentage}，正在倒计时至 ${nextYear} 年`,
   };
 };
 

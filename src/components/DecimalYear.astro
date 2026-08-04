@@ -14,13 +14,35 @@ const initialSnapshot = getDecimalYearSnapshot(new Date(), FULL_DECIMAL_PLACES);
   <span class="decimal-year-values" aria-hidden="true">
     <span class="decimal-year-value decimal-year-progress" data-decimal-year-value>{initialSnapshot.value}</span>
     <span class="decimal-year-value decimal-year-timeline" data-decimal-year-timeline>
-      <span class="decimal-year-boundary">[</span>
-      <span data-decimal-year-current>{initialSnapshot.currentYear}</span>
-      <span class="decimal-year-track">======&gt;</span>
-      <span class="decimal-year-percentage" data-decimal-year-percentage>{initialSnapshot.displayProgressPercentage}</span>
-      <span class="decimal-year-track">======&gt;</span>
-      <span data-decimal-year-next>{initialSnapshot.nextYear}</span>
-      <span class="decimal-year-boundary">]</span>
+      <span class="decimal-year-endpoint" data-decimal-year-current>{initialSnapshot.currentYear}</span>
+      <span class="decimal-year-meter">
+        <span class="decimal-year-percentage" data-decimal-year-percentage>{initialSnapshot.progressPercentage}</span>
+        <svg
+          class="decimal-year-meter-track"
+          viewBox="0 0 100 6"
+          preserveAspectRatio="none"
+          focusable="false"
+        >
+          <line class="decimal-year-meter-base" x1="0" y1="4" x2="100" y2="4"></line>
+          <line
+            class="decimal-year-meter-fill"
+            data-decimal-year-meter-fill
+            x1="0"
+            y1="4"
+            x2={initialSnapshot.progressPosition}
+            y2="4"
+          ></line>
+          <line
+            class="decimal-year-meter-marker"
+            data-decimal-year-meter-marker
+            x1={initialSnapshot.progressPosition}
+            y1="1"
+            x2={initialSnapshot.progressPosition}
+            y2="6"
+          ></line>
+        </svg>
+      </span>
+      <span class="decimal-year-endpoint decimal-year-endpoint-next" data-decimal-year-next>{initialSnapshot.nextYear}</span>
     </span>
   </span>
 </p>
@@ -36,18 +58,32 @@ const initialSnapshot = getDecimalYearSnapshot(new Date(), FULL_DECIMAL_PLACES);
   const currentYear = counter?.querySelector<HTMLElement>("[data-decimal-year-current]");
   const percentage = counter?.querySelector<HTMLElement>("[data-decimal-year-percentage]");
   const nextYear = counter?.querySelector<HTMLElement>("[data-decimal-year-next]");
+  const meterFill = counter?.querySelector<SVGLineElement>("[data-decimal-year-meter-fill]");
+  const meterMarker = counter?.querySelector<SVGLineElement>("[data-decimal-year-meter-marker]");
   const label = counter?.querySelector<HTMLElement>("[data-decimal-year-label]");
 
-  if (counter && value && currentYear && percentage && nextYear && label) {
+  if (
+    counter &&
+    value &&
+    currentYear &&
+    percentage &&
+    nextYear &&
+    meterFill &&
+    meterMarker &&
+    label
+  ) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    /** 同步带下一年终点的十进制年份与悬浮态年度进度。 */
+    /** 同步十进制年份、七位百分比和真实比例轨道，避免跨年时状态撕裂。 */
     const renderCounter = () => {
       const snapshot = getDecimalYearSnapshot(new Date());
       value.textContent = snapshot.value;
       currentYear.textContent = snapshot.currentYear;
-      percentage.textContent = snapshot.displayProgressPercentage;
+      percentage.textContent = snapshot.progressPercentage;
       nextYear.textContent = snapshot.nextYear;
+      meterFill.setAttribute("x2", snapshot.progressPosition);
+      meterMarker.setAttribute("x1", snapshot.progressPosition);
+      meterMarker.setAttribute("x2", snapshot.progressPosition);
 
       // 百分比变化时才更新读屏文案，避免持续改写无障碍树。
       if (label.textContent !== snapshot.label) label.textContent = snapshot.label;
