@@ -74,22 +74,32 @@ const initialSnapshot = getDecimalYearSnapshot(new Date(), FULL_DECIMAL_PLACES);
   ) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    /** 同步十进制年份、七位百分比和真实比例轨道，避免跨年时状态撕裂。 */
-    const renderCounter = () => {
+    /** 按指定层生成一次快照；同一层的年份、百分比和轨道始终成组更新。 */
+    const renderCounter = ({
+      value: renderValue,
+      progress: renderProgress,
+    }: {
+      value: boolean;
+      progress: boolean;
+    }) => {
       const snapshot = getDecimalYearSnapshot(new Date());
-      value.textContent = snapshot.value;
-      currentYear.textContent = snapshot.currentYear;
-      percentage.textContent = snapshot.progressPercentage;
-      nextYear.textContent = snapshot.nextYear;
-      meterFill.setAttribute("x2", snapshot.progressPosition);
-      meterMarker.setAttribute("x1", snapshot.progressPosition);
-      meterMarker.setAttribute("x2", snapshot.progressPosition);
 
-      // 百分比变化时才更新读屏文案，避免持续改写无障碍树。
-      if (label.textContent !== snapshot.label) label.textContent = snapshot.label;
+      if (renderValue) value.textContent = snapshot.value;
+
+      if (renderProgress) {
+        currentYear.textContent = snapshot.currentYear;
+        percentage.textContent = snapshot.progressPercentage;
+        nextYear.textContent = snapshot.nextYear;
+        meterFill.setAttribute("x2", snapshot.progressPosition);
+        meterMarker.setAttribute("x1", snapshot.progressPosition);
+        meterMarker.setAttribute("x2", snapshot.progressPosition);
+
+        // 文案实际变化时才改写无障碍树，避免持续刷新干扰读屏器。
+        if (label.textContent !== snapshot.label) label.textContent = snapshot.label;
+      }
     };
 
-    // 计时器独立管理启动和停止，避免页面隐藏后仍持续刷新 DOM。
+    // 默认态保持 20ms，悬浮百分比与轨道独立保持 100ms。
     const ticker = createDecimalYearTicker({
       render: renderCounter,
       schedule: (callback, intervalMs) => window.setInterval(callback, intervalMs),
@@ -103,7 +113,17 @@ const initialSnapshot = getDecimalYearSnapshot(new Date(), FULL_DECIMAL_PLACES);
 
     reducedMotion.addEventListener("change", syncCounter);
     document.addEventListener("visibilitychange", syncCounter);
-    window.addEventListener("pagehide", ticker.stop, { once: true });
+    window.addEventListener("pagehide", ticker.stop);
+    window.addEventListener("pageshow", (event) => {
+      // 从浏览器往返缓存恢复时重新启动两种节奏；首次加载不重复创建计时器。
+      if (event.persisted) syncCounter();
+    });
+    counter.addEventListener("pointerenter", () => {
+      renderCounter({ value: false, progress: true });
+    });
+    counter.addEventListener("focus", () => {
+      renderCounter({ value: false, progress: true });
+    });
     syncCounter();
   }
 </script>

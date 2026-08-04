@@ -1,6 +1,7 @@
 export const FULL_DECIMAL_PLACES = 18;
 export const PROGRESS_DECIMAL_PLACES = 7;
-export const COUNTER_INTERVAL_MS = 100;
+export const COUNTER_INTERVAL_MS = 20;
+export const PROGRESS_INTERVAL_MS = 100;
 
 /** 校验日期并返回访客本地年份的起止毫秒，使数字与当前日历年份一致。 */
 const getLocalYearRange = (date) => {
@@ -78,35 +79,47 @@ export const getDecimalYearSnapshot = (
 };
 
 /**
- * 管理数字刷新周期；外部注入调度器，便于验证后台暂停和减少动态行为。
+ * 分别管理默认数字与悬浮进度的刷新周期；统一停止和恢复，避免重复计时器。
  * @param {{
- *   render: () => void,
+ *   render: (parts: { value: boolean, progress: boolean }) => void,
  *   schedule: (callback: () => void, intervalMs: number) => unknown,
  *   cancel: (timerId: unknown) => void,
- *   intervalMs?: number,
+ *   valueIntervalMs?: number,
+ *   progressIntervalMs?: number,
  * }} options
  */
 export const createDecimalYearTicker = ({
   render,
   schedule,
   cancel,
-  intervalMs = COUNTER_INTERVAL_MS,
+  valueIntervalMs = COUNTER_INTERVAL_MS,
+  progressIntervalMs = PROGRESS_INTERVAL_MS,
 }) => {
-  let timerId;
+  let valueTimerId;
+  let progressTimerId;
 
-  /** 清除当前刷新任务，重复调用不会产生额外副作用。 */
+  /** 清除两种刷新任务，重复调用不会产生额外副作用。 */
   const stop = () => {
-    if (timerId !== undefined) cancel(timerId);
-    timerId = undefined;
+    if (valueTimerId !== undefined) cancel(valueTimerId);
+    if (progressTimerId !== undefined) cancel(progressTimerId);
+    valueTimerId = undefined;
+    progressTimerId = undefined;
   };
 
-  /** 立即渲染一次，并仅在页面可见且允许动态时持续刷新。 */
+  /** 先完整同步两层，再仅在页面可见且允许动态时启动各自节奏。 */
   const sync = ({ hidden, reducedMotion }) => {
     stop();
-    render();
+    render({ value: true, progress: true });
 
     if (!hidden && !reducedMotion) {
-      timerId = schedule(render, intervalMs);
+      valueTimerId = schedule(
+        () => render({ value: true, progress: false }),
+        valueIntervalMs,
+      );
+      progressTimerId = schedule(
+        () => render({ value: false, progress: true }),
+        progressIntervalMs,
+      );
     }
   };
 
