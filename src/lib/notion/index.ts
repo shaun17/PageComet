@@ -10,11 +10,7 @@ export type {
   NotionRequestScheduler,
   NotionRequestSchedulerOptions,
 } from "./client";
-export {
-  clearPublishedContentCache,
-  getPublishedContent,
-  loadPublishedContent,
-} from "./content";
+export { loadPublishedContent } from "./content";
 export {
   createVisibleJournalQuery,
   DEFAULT_JOURNAL_PROPERTIES,

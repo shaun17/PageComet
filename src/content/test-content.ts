@@ -119,11 +119,15 @@ const INTERNAL_ARTICLE: ContentEntry = {
     {
       ...block("internal-table", "table", [], [
         {
-          ...block("internal-table-row", "table_row"),
+          ...block("internal-table-header-row", "table_row"),
+          cells: [[text("内容")], [text("入口")]],
+        },
+        {
+          ...block("internal-table-content-row", "table_row"),
           cells: [[text("相关经历")], [text("Northstar Studio", EXAMPLE_CAREER_URL)]],
         },
       ]),
-      table: { hasColumnHeader: false, hasRowHeader: false },
+      table: { hasColumnHeader: true, hasRowHeader: true },
     },
     block("heading", "heading_2", [text("内容如何更新")]),
     block("heading-four", "heading_4", [text("四级标题可以稳定显示")], [
@@ -134,6 +138,14 @@ const INTERNAL_ARTICLE: ContentEntry = {
     ]),
     block("list-one", "bulleted_list_item", [text("正文、标题和摘要都会在构建时读取。")]),
     block("list-two", "bulleted_list_item", [text("草稿不会进入网站，也不会生成公开地址。")]),
+    {
+      ...block("todo-completed", "to_do", [text("已完成的构建检查")]),
+      checked: true,
+    },
+    {
+      ...block("todo-pending", "to_do", [text("待完成的发布检查")]),
+      checked: false,
+    },
     block("quote", "quote", [text("Notion 负责写作，静态网站负责最终呈现。")]),
     {
       ...block("animated-gif", "image"),

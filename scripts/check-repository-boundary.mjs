@@ -15,22 +15,28 @@ const COMMON_FORBIDDEN_PREFIXES = [
   "node_modules/",
   "public/notion-assets/",
 ];
-const TEMPLATE_FORBIDDEN_FILES = new Set([
-  "src/components/SpatialPortrait.astro",
-  "src/lib/spatial-avatar-scene.ts",
-  "src/lib/spatial-portrait.ts",
-  "src/pages/avatar.astro",
-  "src/styles/avatar.css",
-  "tests/spatial-portrait.test.mjs",
-]);
-const TEMPLATE_FORBIDDEN_PREFIXES = ["public/3d/"];
+// 个人站运行契约同时也是模板的禁止清单，新增个人模块时只维护这一份来源。
 const PERSONAL_REQUIRED_FILES = [
+  "src/components/HomeSticker.astro",
   "src/components/SpatialPortrait.astro",
+  "src/config/spatial-avatar-assets.ts",
+  "src/config/spatial-avatar-layout.ts",
+  "src/lib/home-sticker.ts",
+  "src/lib/spatial-avatar-model.ts",
+  "src/lib/spatial-avatar-prefetch.ts",
   "src/lib/spatial-avatar-scene.ts",
   "src/lib/spatial-portrait.ts",
   "src/pages/avatar.astro",
   "src/styles/avatar.css",
+  "src/styles/home-sticker.css",
+  "tests/home-sticker.test.mjs",
   "tests/spatial-portrait.test.mjs",
+];
+const TEMPLATE_FORBIDDEN_FILES = new Set(PERSONAL_REQUIRED_FILES);
+const TEMPLATE_FORBIDDEN_PREFIXES = [
+  "public/3d/",
+  "public/projects/id-photo-maker/",
+  "public/stickers/",
 ];
 
 /** 把 SSH 与 HTTPS GitHub 地址统一成不带协议和 .git 后缀的小写标识。 */

@@ -56,6 +56,20 @@ const groupBlocks = (items: ContentBlock[]): BlockGroup[] => {
   return groups;
 };
 
+/**
+ * 计算表格单元格的标题方向：首行优先作为列标题，双向标题的左上交叉格也保持列标题，
+ * 其余首列再作为行标题，避免同一个单元格同时承担两个互斥的 scope。
+ */
+const readTableCellScope = (
+  item: ContentBlock,
+  rowIndex: number,
+  cellIndex: number,
+): "col" | "row" | null => {
+  if (item.table?.hasColumnHeader && rowIndex === 0) return "col";
+  if (item.table?.hasRowHeader && cellIndex === 0) return "row";
+  return null;
+};
+
 const groups = groupBlocks(blocks);
 ---
 
@@ -115,10 +129,10 @@ const groups = groupBlocks(blocks);
           </aside>
         )}
         {item.type === "to_do" && (
-          <div class="notion-todo">
-            <input type="checkbox" checked={item.checked} disabled aria-hidden="true" />
+          <label class="notion-todo">
+            <input type="checkbox" checked={item.checked} disabled />
             <span set:html={renderRichText(item.richText)} />
-          </div>
+          </label>
         )}
         {item.type === "toggle" && (
           <details>
@@ -176,13 +190,14 @@ const groups = groupBlocks(blocks);
               <tbody>
                 {item.children.map((row, rowIndex) => (
                   <tr>
-                    {(row.cells ?? []).map((cell) =>
-                      item.table?.hasColumnHeader && rowIndex === 0 ? (
-                        <th scope="col" set:html={renderRichText(cell)} />
+                    {(row.cells ?? []).map((cell, cellIndex) => {
+                      const scope = readTableCellScope(item, rowIndex, cellIndex);
+                      return scope ? (
+                        <th scope={scope} set:html={renderRichText(cell)} />
                       ) : (
                         <td set:html={renderRichText(cell)} />
-                      ),
-                    )}
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

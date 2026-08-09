@@ -447,6 +447,31 @@ test("builds article indexes and the journal feed", async () => {
   assert.ok(internalWritingAnchor);
   assert.doesNotMatch(internalWritingAnchor, /target=/);
 
+  // 双向标题表格的左上交叉格属于列标题，其余首列属于行标题。
+  const notionTable = exampleWriting.match(/<table>[\s\S]*?<\/table>/)?.[0] ?? "";
+  assert.ok(notionTable);
+  assert.equal((notionTable.match(/scope="col"/g) ?? []).length, 2);
+  assert.equal((notionTable.match(/scope="row"/g) ?? []).length, 1);
+  assert.match(
+    notionTable,
+    /<tr><th scope="col">内容<\/th><th scope="col">入口<\/th><\/tr><tr><th scope="row">相关经历<\/th><td>/,
+  );
+
+  // 已完成和未完成待办都必须由 label 提供名称，并把 checked 状态留在无障碍树中。
+  const notionTodos = [
+    ...exampleWriting.matchAll(/<label class="notion-todo">[\s\S]*?<\/label>/g),
+  ].map((match) => match[0]);
+  assert.equal(notionTodos.length, 2);
+  assert.match(
+    notionTodos[0],
+    /<input type="checkbox" checked disabled><span>已完成的构建检查<\/span>/,
+  );
+  assert.match(
+    notionTodos[1],
+    /<input type="checkbox" disabled><span>待完成的发布检查<\/span>/,
+  );
+  for (const todo of notionTodos) assert.doesNotMatch(todo, /aria-hidden/);
+
   assert.match(journal, /<section class="journal-feed" aria-label="流水账时间流">/);
   assert.equal((journal.match(/class="journal-entry"/g) ?? []).length, 1);
   assert.match(journal, /2026\.07\.19/);
