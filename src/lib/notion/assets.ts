@@ -4,12 +4,14 @@ import {
   link,
   mkdir,
   readFile,
+  readdir,
   rename,
   rm,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { imageSize } from "image-size";
+import { lock } from "proper-lockfile";
+import sharp from "sharp";
 import {
   createPublicRemoteFetcher,
   createUnsafeTestRemoteFetcher,
@@ -33,11 +35,19 @@ const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 // Cloudflare Pages 单个静态文件上限为 25 MiB，构建阶段提前给出明确错误。
 const DEFAULT_MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 const DEFAULT_MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+// 元数据读取也限制声明像素数，避免小体积压缩图片用异常画布消耗底层解析资源。
+const MAX_IMAGE_PIXELS = 100_000_000;
 // 有界并发兼顾下载速度与构建内存；单个媒体最多可占用 25 MiB。
 const DEFAULT_MEDIA_CONCURRENCY = 3;
 const MAX_MEDIA_CONCURRENCY = 6;
 const MEDIA_CACHE_VERSION = 1;
+// 整个缓存事务跨进程串行化；心跳避免长构建被误判，有限重试让异常锁最终显式失败。
+const MEDIA_CACHE_LOCK_STALE_MS = 30_000;
+const MEDIA_CACHE_LOCK_UPDATE_MS = 10_000;
+const MEDIA_CACHE_LOCK_RETRY_COUNT = 600;
+const MEDIA_CACHE_LOCK_RETRY_MS = 500;
 const CONTENT_HASH_FILE_PATTERN = /^([a-f0-9]{64})(\.[a-z0-9]+)$/;
+const CACHE_ENTRY_FILE_PATTERN = /^([a-f0-9]{64})\.json$/;
 
 interface ResolvedMediaLocalizationOptions {
   outputDirectory: string;
@@ -53,6 +63,7 @@ interface ResolvedMediaLocalizationOptions {
   maxRedirects: number;
   requestTimeoutMs: number;
   reportCacheStats: boolean;
+  cacheScope: "partial" | "complete";
 }
 
 interface MediaLocalizationTestOptions extends MediaLocalizationOptions {
@@ -89,6 +100,8 @@ interface MediaCacheStats {
   misses: number;
   downloads: number;
   reusedBytes: number;
+  prunedEntries: number;
+  prunedObjects: number;
 }
 
 /** 校验媒体并发配置，避免错误配置造成无界内存占用。 */
@@ -168,18 +181,28 @@ const readLimitedBody = async (
   return body;
 };
 
-/** 从图片字节读取浏览器实际展示方向；带旋转标记的照片需要交换宽高。 */
-const readImageDimensions = (
+/**
+ * 从有大小上限的图片字节读取浏览器实际展示尺寸。
+ * Sharp 只读取元数据，autoOrient 会同时处理 JPEG EXIF 镜像与旋转方向；损坏图片继续降级为无固有尺寸。
+ */
+const readImageDimensions = async (
   body: Uint8Array,
-): Pick<ContentImage, "width" | "height"> => {
+): Promise<Pick<ContentImage, "width" | "height">> => {
   try {
-    const dimensions = imageSize(body);
-    if (dimensions.width <= 0 || dimensions.height <= 0) return {};
-    const orientation = dimensions.orientation ?? 1;
-    const swapsAxes = orientation >= 5 && orientation <= 8;
-    return swapsAxes
-      ? { width: dimensions.height, height: dimensions.width }
-      : { width: dimensions.width, height: dimensions.height };
+    const metadata = await sharp(body, {
+      limitInputPixels: MAX_IMAGE_PIXELS,
+    }).metadata();
+    const width = metadata.autoOrient.width;
+    const height = metadata.autoOrient.height;
+    if (
+      !Number.isInteger(width) ||
+      !Number.isInteger(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      return {};
+    }
+    return { width, height };
   } catch {
     // 极少数合法图片可能没有可解析的固有尺寸，页面加载后会用 naturalWidth 兜底。
     return {};
@@ -201,6 +224,28 @@ const resolveDefaultOutputDirectory = (): string => {
 /** 持久资源库独立于 dist，Astro 清理输出目录时不会丢失已下载媒体。 */
 const resolveDefaultCacheDirectory = (): string =>
   path.resolve(process.cwd(), ".cache/notion-assets");
+
+/**
+ * 独占整个共享缓存事务，覆盖索引读取、对象写入、产物物化与完整集合回收。
+ * 只锁清理阶段仍会留下“对象已写入但尚未物化”的删除竞态，因此所有缓存调用统一串行。
+ */
+const acquireMediaCacheLock = async (
+  cacheDirectory: string,
+): Promise<() => Promise<void>> => {
+  await mkdir(cacheDirectory, { recursive: true });
+  return lock(cacheDirectory, {
+    realpath: true,
+    stale: MEDIA_CACHE_LOCK_STALE_MS,
+    update: MEDIA_CACHE_LOCK_UPDATE_MS,
+    retries: {
+      retries: MEDIA_CACHE_LOCK_RETRY_COUNT,
+      factor: 1,
+      minTimeout: MEDIA_CACHE_LOCK_RETRY_MS,
+      maxTimeout: MEDIA_CACHE_LOCK_RETRY_MS,
+      randomize: false,
+    },
+  });
+};
 
 /** 判断文件读取失败是否仅表示目标不存在。 */
 const isMissingFileError = (error: unknown): boolean =>
@@ -253,6 +298,83 @@ const parseMediaCacheEntry = (
     }
   }
   return candidate as MediaCacheEntry;
+};
+
+/** 判断缓存索引中的种类是否属于当前支持的媒体集合。 */
+const isMediaKind = (value: unknown): value is MediaKind =>
+  value === "image" || value === "video" || value === "audio";
+
+/** 读取缓存目录内容；首次构建尚未创建目录时按空集合处理。 */
+const readCacheDirectory = async (directory: string): Promise<string[]> => {
+  try {
+    return await readdir(directory);
+  } catch (error) {
+    if (isMissingFileError(error)) return [];
+    throw error;
+  }
+};
+
+/**
+ * 按完整站点本次实际使用的缓存身份清理孤儿条目和内容对象。
+ * 先删除过期索引，再从仍有效索引重建对象引用集合，确保多个媒体共享同一内容时不会误删。
+ */
+const pruneOrphanedMediaCache = async (
+  cacheDirectory: string,
+  activeEntryIds: ReadonlySet<string>,
+): Promise<{ entries: number; objects: number }> => {
+  const entriesDirectory = path.join(cacheDirectory, "entries");
+  const objectsDirectory = path.join(cacheDirectory, "objects");
+  const retainedObjects = new Set<string>();
+  let prunedEntries = 0;
+
+  for (const fileName of await readCacheDirectory(entriesDirectory)) {
+    const match = fileName.match(CACHE_ENTRY_FILE_PATTERN);
+    if (!match) continue;
+    const entryPath = path.join(entriesDirectory, fileName);
+    if (!activeEntryIds.has(match[1]!)) {
+      await rm(entryPath, { force: true });
+      prunedEntries += 1;
+      continue;
+    }
+
+    let serialized: string;
+    try {
+      serialized = await readFile(entryPath, "utf8");
+    } catch (error) {
+      if (isMissingFileError(error)) continue;
+      throw error;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(serialized);
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      await rm(entryPath, { force: true });
+      prunedEntries += 1;
+      continue;
+    }
+    const kind =
+      parsed &&
+      typeof parsed === "object" &&
+      isMediaKind((parsed as { kind?: unknown }).kind)
+        ? (parsed as { kind: MediaKind }).kind
+        : null;
+    const entry = kind ? parseMediaCacheEntry(parsed, kind) : null;
+    if (!entry) {
+      await rm(entryPath, { force: true });
+      prunedEntries += 1;
+      continue;
+    }
+    retainedObjects.add(entry.fileName);
+  }
+
+  let prunedObjects = 0;
+  for (const fileName of await readCacheDirectory(objectsDirectory)) {
+    if (!CONTENT_HASH_FILE_PATTERN.test(fileName) || retainedObjects.has(fileName)) continue;
+    await rm(path.join(objectsDirectory, fileName), { force: true });
+    prunedObjects += 1;
+  }
+  return { entries: prunedEntries, objects: prunedObjects };
 };
 
 /** 缓存身份只使用 Notion 对象版本，不写入临时签名 URL。 */
@@ -426,7 +548,7 @@ const downloadMediaAsset = async (
     const body = await readLimitedBody(response, maxBytes, label);
     bodyConsumed = true;
     validateMediaSignature(kind, extension, body);
-    const dimensions = kind === "image" ? readImageDimensions(body) : {};
+    const dimensions = kind === "image" ? await readImageDimensions(body) : {};
     const contentHash = createHash("sha256").update(body).digest("hex");
     const fileName = `${contentHash}${extension}`;
     return {
@@ -496,11 +618,20 @@ const localizeContentEntriesMediaInternal = async <T extends RenderableContentEn
     maxRedirects: options.maxRedirects ?? 5,
     requestTimeoutMs: options.requestTimeoutMs ?? 10_000,
     reportCacheStats: options.reportCacheStats ?? false,
+    cacheScope: options.cacheScope ?? "partial",
   };
   const limitTask = createTaskLimiter(resolveMediaConcurrency(options.concurrency));
   const inFlightAssets = new Map<string, Promise<LocalizedMediaAsset>>();
   const inFlightDownloads = new Map<string, Promise<DownloadedMediaAsset>>();
-  const stats: MediaCacheStats = { hits: 0, misses: 0, downloads: 0, reusedBytes: 0 };
+  const activeCacheEntryIds = new Set<string>();
+  const stats: MediaCacheStats = {
+    hits: 0,
+    misses: 0,
+    downloads: 0,
+    reusedBytes: 0,
+    prunedEntries: 0,
+    prunedObjects: 0,
+  };
 
   /** 同一临时来源在一次构建中只发起一次真实下载。 */
   const downloadOnce = (
@@ -524,6 +655,7 @@ const localizeContentEntriesMediaInternal = async <T extends RenderableContentEn
     const entryId = resolvedOptions.cacheDirectory
       ? createMediaCacheEntryId(media, kind)
       : null;
+    if (entryId) activeCacheEntryIds.add(entryId);
     const taskKey = entryId ? `cache:${entryId}` : `source:${kind}:${media.url}`;
     const existing = inFlightAssets.get(taskKey);
     if (existing) return existing;
@@ -587,8 +719,12 @@ const localizeContentEntriesMediaInternal = async <T extends RenderableContentEn
   };
 
   const runtime: MediaLocalizationRuntime = { options: resolvedOptions, localizeMedia };
+  let releaseCacheLock: (() => Promise<void>) | null = null;
   try {
-    return await Promise.all(
+    if (resolvedOptions.cacheDirectory) {
+      releaseCacheLock = await acquireMediaCacheLock(resolvedOptions.cacheDirectory);
+    }
+    const localizedEntries = await Promise.all(
       entries.map(async (entry) => {
         const shouldLocalizeCover =
           entry.cover?.source === "notion" ||
@@ -602,16 +738,30 @@ const localizeContentEntriesMediaInternal = async <T extends RenderableContentEn
         return { ...entry, cover, blocks };
       }),
     );
+    // 只有调用方声明传入完整站点集合时才回收；局部文章处理默认绝不触碰其他条目的缓存。
+    if (resolvedOptions.cacheDirectory && resolvedOptions.cacheScope === "complete") {
+      const pruned = await pruneOrphanedMediaCache(
+        resolvedOptions.cacheDirectory,
+        activeCacheEntryIds,
+      );
+      stats.prunedEntries = pruned.entries;
+      stats.prunedObjects = pruned.objects;
+    }
+    return localizedEntries;
   } finally {
     // 任一媒体失败时也等待已启动任务收尾，避免关闭连接池时打断其他缓存写入。
     await Promise.allSettled(inFlightAssets.values());
     if (resolvedOptions.reportCacheStats) {
       const reusedMiB = (stats.reusedBytes / 1024 / 1024).toFixed(2);
       console.info(
-        `媒体缓存：命中 ${stats.hits}，未命中 ${stats.misses}，实际下载 ${stats.downloads}，复用 ${reusedMiB} MiB`,
+        `媒体缓存：命中 ${stats.hits}，未命中 ${stats.misses}，实际下载 ${stats.downloads}，复用 ${reusedMiB} MiB，清理索引 ${stats.prunedEntries}、对象 ${stats.prunedObjects}`,
       );
     }
-    await remoteFetcher.close();
+    try {
+      await remoteFetcher.close();
+    } finally {
+      await releaseCacheLock?.();
+    }
   }
 };
 
@@ -627,6 +777,9 @@ export const localizeContentEntryMedia = async <T extends RenderableContentEntry
   entry: T,
   options: MediaLocalizationOptions = {},
 ): Promise<T> => (await localizeContentEntriesMedia([entry], options))[0]!;
+
+/** 仅供隔离子进程验证畸形图片不会卡住元数据解析，正式构建通过下载流程调用同一函数。 */
+export const readImageDimensionsForTest = readImageDimensions;
 
 /** 仅供离线测试批量注入固定媒体响应，不会被正式内容构建调用。 */
 export const localizeContentEntriesMediaForTest = async <

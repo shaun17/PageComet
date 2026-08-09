@@ -1,11 +1,30 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import test, { after, before } from "node:test";
+import sharp from "sharp";
 import { createTestViteServer } from "./vite-test-server.mjs";
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+/** 子进程带超时和 SIGKILL，旧解析器即使同步死循环也只会让测试快速失败。 */
+const execFileAsync = promisify(execFile);
+// 使用完整 GIF 文件验证 Sharp 元数据；仅有逻辑屏幕头的截断数据会被正确视为损坏图片。
+const GIF_1_BY_2_BYTES = new Uint8Array(
+  Buffer.from("R0lGODlhAQACAIAAAExpcQAAACH5BAUAAAAALAAAAAABAAIAAAICBAoAOw==", "base64"),
+);
+const GIF_2_BY_2_BYTES = new Uint8Array(
+  Buffer.from("R0lGODlhAgACAIAAAExpcQAAACH5BAUAAAAALAAAAAACAAIAAAIChFEAOw==", "base64"),
+);
+// ispe 声明零长度的畸形 AVIF 曾让纯 JavaScript 解析器无限循环，测试必须始终在硬超时内结束。
+const ZERO_LENGTH_ISPE_AVIF = new Uint8Array(
+  Buffer.from(
+    "AAAAGGZ0eXBhdmlmAAAAAGF2aWZtaWYxAAAAOG1ldGEAAAAAAAAALGlwcnAAAAAkaXBjbwAAAABpc3BlAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "base64",
+  ),
+);
 let vite;
 let localizeContentEntriesMediaForTest;
 let localizeContentEntryMediaForTest;
@@ -130,10 +149,128 @@ test("derives a stable media cache key from the block version, not its signed UR
   assert.notEqual(refreshed.image.url, first.image.url);
 });
 
+test("extracts bounded PNG, GIF, JPEG, WebP, and AVIF display dimensions", async () => {
+  const outputDirectory = await mkdtemp(path.join(tmpdir(), "wenren-image-metadata-"));
+  /** 为各编码器提供同一张 3×5 测试图，避免格式差异影响预期尺寸。 */
+  const createBaseImage = () =>
+    sharp({
+      create: {
+        width: 3,
+        height: 5,
+        channels: 4,
+        background: { r: 12, g: 34, b: 56, alpha: 1 },
+      },
+    });
+  const fixtures = [
+    {
+      extension: "png",
+      contentType: "image/png",
+      body: await createBaseImage().png().toBuffer(),
+      width: 3,
+      height: 5,
+    },
+    {
+      extension: "gif",
+      contentType: "image/gif",
+      body: await createBaseImage().gif().toBuffer(),
+      width: 3,
+      height: 5,
+    },
+    {
+      extension: "jpg",
+      contentType: "image/jpeg",
+      body: await createBaseImage().withMetadata({ orientation: 6 }).jpeg().toBuffer(),
+      width: 5,
+      height: 3,
+    },
+    {
+      extension: "webp",
+      contentType: "image/webp",
+      body: await createBaseImage().webp().toBuffer(),
+      width: 3,
+      height: 5,
+    },
+    {
+      extension: "avif",
+      contentType: "image/avif",
+      body: await createBaseImage().avif().toBuffer(),
+      width: 3,
+      height: 5,
+    },
+  ];
+  const entry = createEntry(
+    fixtures.map((fixture) => ({
+      id: `image-${fixture.extension}`,
+      type: "image",
+      richText: [],
+      children: [],
+      image: {
+        url: `https://files.example/image.${fixture.extension}`,
+        alt: fixture.extension,
+        source: "notion",
+        expiryTime: null,
+        localized: false,
+      },
+    })),
+  );
+
+  try {
+    const localized = await localizeContentEntryMediaForTest(entry, {
+      outputDirectory,
+      cacheDirectory: false,
+      fetchImpl: async (input) => {
+        const pathname = new URL(String(input)).pathname;
+        const fixture = fixtures.find(({ extension }) => pathname.endsWith(`.${extension}`));
+        assert.ok(fixture);
+        return new Response(fixture.body, {
+          headers: { "Content-Type": fixture.contentType },
+        });
+      },
+    });
+
+    localized.blocks.forEach((block, index) => {
+      assert.equal(block.image.width, fixtures[index].width);
+      assert.equal(block.image.height, fixtures[index].height);
+    });
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test(
+  "handles zero-length AVIF metadata without hanging the build",
+  { timeout: 8_000 },
+  async () => {
+    const childScript = `
+    import { createTestViteServer } from ${JSON.stringify(path.join(projectRoot, "tests/vite-test-server.mjs"))};
+    const vite = await createTestViteServer(${JSON.stringify(projectRoot)});
+    try {
+      const { readImageDimensionsForTest } = await vite.ssrLoadModule("/src/lib/notion/assets.ts");
+      const input = new Uint8Array(Buffer.from(${JSON.stringify(Buffer.from(ZERO_LENGTH_ISPE_AVIF).toString("base64"))}, "base64"));
+      const dimensions = await readImageDimensionsForTest(input);
+      console.log("DIMENSIONS:" + JSON.stringify(dimensions));
+    } finally {
+      await vite.close();
+    }
+    `;
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      ["--input-type=module", "--eval", childScript],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, SITE_CONFIG_MODE: "example" },
+        timeout: 5_000,
+        killSignal: "SIGKILL",
+      },
+    );
+    const resultLine = stdout.split("\n").find((line) => line.startsWith("DIMENSIONS:"));
+    assert.equal(resultLine, "DIMENSIONS:{}");
+  },
+);
+
 test("localizes GIF, uploaded video, and uploaded audio without changing bytes", async () => {
   const outputDirectory = await mkdtemp(path.join(tmpdir(), "wenren-notion-media-"));
-  // 最小 GIF 头声明 1×2 画布，足以验证下载过程会保留字节并提取固有尺寸。
-  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
+  const gifBytes = GIF_1_BY_2_BYTES;
   const videoBytes = Uint8Array.from([0, 0, 0, 24, 102, 116, 121, 112, 1, 2, 3]);
   // 空白 WAV 仍具有完整容器头，可验证音频签名与静态文件落盘。
   const audioBytes = Uint8Array.from([
@@ -233,7 +370,7 @@ test("reuses persistent media across builds while preserving each image alt", as
   const cacheDirectory = path.join(root, "cache");
   const firstOutput = path.join(root, "first-output");
   const secondOutput = path.join(root, "second-output");
-  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
+  const gifBytes = GIF_1_BY_2_BYTES;
   let fetchCount = 0;
   /** 构造签名会刷新、但 Notion 块版本不变的图片。 */
   const cachedEntry = (signature, alt) =>
@@ -292,8 +429,8 @@ test("reuses persistent media across builds while preserving each image alt", as
 test("downloads a replacement when the Notion media version changes", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "wenren-media-cache-version-"));
   const cacheDirectory = path.join(root, "cache");
-  const firstBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
-  const secondBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 2, 0, 2, 0, 0, 0, 0]);
+  const firstBytes = GIF_1_BY_2_BYTES;
+  const secondBytes = GIF_2_BY_2_BYTES;
   let fetchCount = 0;
   /** 缓存版本随块更新时间变化，资源替换后必须形成新条目。 */
   const versionedEntry = (version) =>
@@ -334,6 +471,131 @@ test("downloads a replacement when the Notion media version changes", async () =
     assert.notEqual(second.blocks[0].image.url, first.blocks[0].image.url);
     assert.equal(second.blocks[0].image.width, 2);
     assert.equal((await readdir(path.join(cacheDirectory, "entries"))).length, 2);
+    assert.equal((await readdir(path.join(cacheDirectory, "objects"))).length, 2);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("prunes edited and deleted media only for a complete content set", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "wenren-media-cache-prune-"));
+  const cacheDirectory = path.join(root, "cache");
+  /** 用不同缓存身份和不同内容模拟同一 Notion 图片先编辑、再从站点删除。 */
+  const versionedEntry = (version) =>
+    createEntry([{
+      id: "pruned-image",
+      type: "image",
+      richText: [],
+      children: [],
+      image: {
+        url: `https://files.example/pruned-${version}.gif`,
+        alt: "待回收图片",
+        source: "notion",
+        expiryTime: null,
+        localized: false,
+        cacheKey: `block:pruned-image:${version}`,
+      },
+    }]);
+  /** 按 URL 返回两个有效但内容不同的 GIF，确保旧对象不会因内容去重而被保留。 */
+  const fetchImpl = async (input) =>
+    new Response(String(input).includes("v1") ? GIF_1_BY_2_BYTES : GIF_2_BY_2_BYTES, {
+      headers: { "Content-Type": "image/gif" },
+    });
+
+  try {
+    await localizeContentEntriesMediaForTest([versionedEntry("v1")], {
+      outputDirectory: path.join(root, "first-output"),
+      cacheDirectory,
+      cacheScope: "complete",
+      fetchImpl,
+    });
+    const [oldEntryFile] = await readdir(path.join(cacheDirectory, "entries"));
+    const [oldObjectFile] = await readdir(path.join(cacheDirectory, "objects"));
+
+    await localizeContentEntriesMediaForTest([versionedEntry("v2")], {
+      outputDirectory: path.join(root, "second-output"),
+      cacheDirectory,
+      cacheScope: "complete",
+      fetchImpl,
+    });
+    const editedEntryFiles = await readdir(path.join(cacheDirectory, "entries"));
+    const editedObjectFiles = await readdir(path.join(cacheDirectory, "objects"));
+    assert.equal(editedEntryFiles.length, 1);
+    assert.equal(editedObjectFiles.length, 1);
+    assert.equal(editedEntryFiles.includes(oldEntryFile), false);
+    assert.equal(editedObjectFiles.includes(oldObjectFile), false);
+
+    await localizeContentEntriesMediaForTest([], {
+      outputDirectory: path.join(root, "empty-output"),
+      cacheDirectory,
+      cacheScope: "complete",
+      fetchImpl: async () => {
+        throw new Error("空站点不应下载媒体");
+      },
+    });
+    assert.deepEqual(await readdir(path.join(cacheDirectory, "entries")), []);
+    assert.deepEqual(await readdir(path.join(cacheDirectory, "objects")), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("serializes concurrent complete cache builds before pruning", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "wenren-media-cache-lock-"));
+  const cacheDirectory = path.join(root, "cache");
+  let activeFetches = 0;
+  let maximumActiveFetches = 0;
+  /** 用不同稳定身份构造两个会争用同一缓存目录的完整构建。 */
+  const concurrentEntry = (suffix) =>
+    createEntry([{
+      id: `concurrent-image-${suffix}`,
+      type: "image",
+      richText: [],
+      children: [],
+      image: {
+        url: `https://files.example/concurrent-${suffix}.gif`,
+        alt: `并发图片 ${suffix}`,
+        source: "notion",
+        expiryTime: null,
+        localized: false,
+        cacheKey: `block:concurrent-image:${suffix}`,
+      },
+    }]);
+  /** 延迟响应放大旧实现的竞态窗口，并记录两个完整事务是否重叠。 */
+  const delayedFetch = (body) => async () => {
+    activeFetches += 1;
+    maximumActiveFetches = Math.max(maximumActiveFetches, activeFetches);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return new Response(body, { headers: { "Content-Type": "image/gif" } });
+    } finally {
+      activeFetches -= 1;
+    }
+  };
+  const firstOutput = path.join(root, "first-output");
+  const secondOutput = path.join(root, "second-output");
+
+  try {
+    await Promise.all([
+      localizeContentEntriesMediaForTest([concurrentEntry("first")], {
+        outputDirectory: firstOutput,
+        cacheDirectory,
+        cacheScope: "complete",
+        fetchImpl: delayedFetch(GIF_1_BY_2_BYTES),
+      }),
+      localizeContentEntriesMediaForTest([concurrentEntry("second")], {
+        outputDirectory: secondOutput,
+        cacheDirectory,
+        cacheScope: "complete",
+        fetchImpl: delayedFetch(GIF_2_BY_2_BYTES),
+      }),
+    ]);
+
+    assert.equal(maximumActiveFetches, 1);
+    assert.equal((await readdir(firstOutput)).length, 1);
+    assert.equal((await readdir(secondOutput)).length, 1);
+    assert.equal((await readdir(path.join(cacheDirectory, "entries"))).length, 1);
+    assert.equal((await readdir(path.join(cacheDirectory, "objects"))).length, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -342,7 +604,7 @@ test("downloads a replacement when the Notion media version changes", async () =
 test("repairs a corrupted persistent media object by downloading it again", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "wenren-media-cache-repair-"));
   const cacheDirectory = path.join(root, "cache");
-  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
+  const gifBytes = GIF_1_BY_2_BYTES;
   const entry = createEntry([{
     id: "repair-image",
     type: "image",
@@ -405,7 +667,7 @@ test("repairs a corrupted persistent media object by downloading it again", asyn
 
 test("localizes site media with bounded concurrency", async () => {
   const outputDirectory = await mkdtemp(path.join(tmpdir(), "wenren-media-pool-"));
-  const gifBytes = Uint8Array.from([71, 73, 70, 56, 57, 97, 1, 0, 2, 0, 0, 0, 0]);
+  const gifBytes = GIF_1_BY_2_BYTES;
   let activeCount = 0;
   let maximumActiveCount = 0;
   let startedCount = 0;
@@ -434,6 +696,8 @@ test("localizes site media with bounded concurrency", async () => {
   try {
     const pending = localizeContentEntriesMediaForTest(entries, {
       outputDirectory,
+      // 并发池测试必须强制真实下载，不能受跨次运行的持久缓存命中影响。
+      cacheDirectory: false,
       concurrency: 2,
       fetchImpl: async () => {
         activeCount += 1;
@@ -456,6 +720,8 @@ test("localizes site media with bounded concurrency", async () => {
     assert.equal(maximumActiveCount, 2);
     assert.equal(localized.every((entry) => entry.blocks[0].image.localized), true);
   } finally {
+    // 断言失败时也释放门闩，避免遗留下载任务和缓存锁阻止测试进程退出。
+    releaseDownloads?.();
     await rm(outputDirectory, { recursive: true, force: true });
   }
 });

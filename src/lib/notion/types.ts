@@ -189,4 +189,6 @@ export interface MediaLocalizationOptions {
   requestTimeoutMs?: number;
   /** 正式构建输出缓存命中和真实下载数量。 */
   reportCacheStats?: boolean;
+  /** 仅当 entries 是完整站点集合时设为 complete，成功后才会回收其他条目的孤儿缓存。 */
+  cacheScope?: "partial" | "complete";
 }

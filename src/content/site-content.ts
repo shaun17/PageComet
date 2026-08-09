@@ -117,6 +117,8 @@ const loadSiteContentBundle = async (): Promise<SiteContentBundle> => {
       localizeExternalImages: true,
       concurrency: 3,
       reportCacheStats: true,
+      // 此处一次传入文章与流水账的完整集合，可以安全回收已编辑或删除媒体的旧缓存。
+      cacheScope: "complete",
     },
   );
   return prepareSiteContent(

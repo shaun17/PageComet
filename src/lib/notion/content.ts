@@ -125,16 +125,3 @@ export const loadPublishedContent = async (
       : await localizeContentEntriesMedia(entries, options.media);
   return sortContentEntries(localizedEntries);
 };
-
-let cachedPublishedContent: Promise<ContentEntry[]> | null = null;
-
-/** 在同一次 Astro 构建中共享查询结果，避免首页与文章路由重复请求 Notion。 */
-export const getPublishedContent = (): Promise<ContentEntry[]> => {
-  cachedPublishedContent ??= loadPublishedContent();
-  return cachedPublishedContent;
-};
-
-/** 仅供测试或显式的长驻构建进程清理模块级缓存。 */
-export const clearPublishedContentCache = (): void => {
-  cachedPublishedContent = null;
-};
