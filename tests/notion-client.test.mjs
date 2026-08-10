@@ -51,6 +51,15 @@ const block = (id, flags = {}) => ({
   ...flags,
 });
 
+/** 模拟 Node 全局 Fetch 对 Undici 建连超时的 TypeError 包装结构。 */
+const connectTimeoutError = (attempt) => {
+  const cause = Object.assign(new Error(`Connect Timeout Error ${attempt}`), {
+    name: "ConnectTimeoutError",
+    code: "UND_ERR_CONNECT_TIMEOUT",
+  });
+  return new TypeError("fetch failed", { cause });
+};
+
 test("omits false in_trash and excludes trashed or archived pages", async () => {
   const requests = [];
   const query = createPublishedContentQuery(resolvePropertyNames());
@@ -99,6 +108,96 @@ test("excludes trashed or archived blocks from article content", async () => {
   const blocks = await client.listBlockChildren("article-page");
 
   assert.deepEqual(blocks.map(({ id }) => id), ["visible"]);
+});
+
+test("immediately retries two Notion connection timeouts and succeeds on the third attempt", async () => {
+  let attemptCount = 0;
+  const client = new NotionClient({
+    token: "test-token",
+    dataSourceId: "test-data-source",
+    scheduler: createNotionRequestScheduler({ intervalMs: 0, concurrency: 1 }),
+    fetchImpl: async () => {
+      attemptCount += 1;
+      if (attemptCount <= 2) throw connectTimeoutError(attemptCount);
+      return new Response(JSON.stringify({ object: "data_source", id: "test-data-source" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  const dataSource = await client.retrieveDataSource();
+
+  assert.equal(attemptCount, 3);
+  assert.equal(dataSource.id, "test-data-source");
+});
+
+test("stops after two Notion connection-timeout retries and preserves the final error", async () => {
+  const errors = [1, 2, 3].map(connectTimeoutError);
+  let attemptCount = 0;
+  const client = new NotionClient({
+    token: "test-token",
+    dataSourceId: "test-data-source",
+    scheduler: createNotionRequestScheduler({ intervalMs: 0, concurrency: 1 }),
+    fetchImpl: async () => {
+      const error = errors[attemptCount];
+      attemptCount += 1;
+      throw error;
+    },
+  });
+
+  await assert.rejects(client.retrieveDataSource(), (error) => error === errors[2]);
+  assert.equal(attemptCount, 3);
+});
+
+test("does not retry unrelated Notion network failures", async () => {
+  const socketError = new TypeError("fetch failed", {
+    cause: Object.assign(new Error("socket disconnected"), { code: "UND_ERR_SOCKET" }),
+  });
+  let attemptCount = 0;
+  const client = new NotionClient({
+    token: "test-token",
+    dataSourceId: "test-data-source",
+    scheduler: createNotionRequestScheduler({ intervalMs: 0, concurrency: 1 }),
+    fetchImpl: async () => {
+      attemptCount += 1;
+      throw socketError;
+    },
+  });
+
+  await assert.rejects(client.retrieveDataSource(), (error) => error === socketError);
+  assert.equal(attemptCount, 1);
+});
+
+test("keeps connection-timeout and HTTP response retry budgets independent", async () => {
+  let attemptCount = 0;
+  const client = new NotionClient({
+    token: "test-token",
+    dataSourceId: "test-data-source",
+    maxRetries: 1,
+    scheduler: createNotionRequestScheduler({ intervalMs: 0, concurrency: 1 }),
+    fetchImpl: async () => {
+      attemptCount += 1;
+      if (attemptCount === 1 || attemptCount === 3) {
+        throw connectTimeoutError(attemptCount);
+      }
+      if (attemptCount === 2) {
+        return new Response("temporary failure", {
+          status: 503,
+          headers: { "Retry-After": "0" },
+        });
+      }
+      return new Response(JSON.stringify({ object: "data_source", id: "test-data-source" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  const dataSource = await client.retrieveDataSource();
+
+  assert.equal(attemptCount, 4);
+  assert.equal(dataSource.id, "test-data-source");
 });
 
 test("shared Notion scheduler enforces its global concurrency limit", async () => {
