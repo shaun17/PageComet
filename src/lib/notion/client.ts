@@ -10,6 +10,9 @@ export const NOTION_API_VERSION = "2026-03-11";
 // Notion 官方限制为每个连接平均每秒 3 次请求，340 ms 间隔留出少量调度余量。
 const DEFAULT_REQUEST_INTERVAL_MS = 340;
 const DEFAULT_REQUEST_CONCURRENCY = 3;
+// 固定 Node 22.13.0 发布环境的 Undici 建连超时为 10 秒；失败后不退避，最多立即重试两次。
+const MAX_CONNECT_TIMEOUT_RETRIES = 2;
+const UNDICI_CONNECT_TIMEOUT_CODE = "UND_ERR_CONNECT_TIMEOUT";
 
 /** Notion API 错误保留状态码和请求 ID，便于定位构建失败。 */
 export class NotionApiError extends Error {
@@ -117,6 +120,23 @@ const readRetryDelay = (response: Response, attempt: number): number => {
 /** 构建阶段的短暂等待，仅用于 Notion 限流和服务端临时错误重试。 */
 const wait = async (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+/**
+ * 沿错误 cause 链识别 Undici 建连超时。
+ * Node 全局 Fetch 会把底层错误包装为 TypeError，因此不能只检查最外层对象。
+ */
+const isConnectTimeoutError = (error: unknown): boolean => {
+  const visited = new Set<object>();
+  let current = error;
+
+  while (typeof current === "object" && current !== null && !visited.has(current)) {
+    visited.add(current);
+    if ("code" in current && current.code === UNDICI_CONNECT_TIMEOUT_CODE) return true;
+    current = "cause" in current ? current.cause : null;
+  }
+
+  return false;
+};
 
 /** 对响应错误体做容错解析，避免 HTML 错误页遮蔽真实状态码。 */
 const readErrorDetails = async (
@@ -238,28 +258,45 @@ export class NotionClient {
     return blocks;
   }
 
-  /** 发起单次 API 请求；仅对限流和服务端临时错误进行有界重试。 */
+  /** 发起单次 API 请求；分别限制建连超时与 HTTP 临时错误的重试次数。 */
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
+    let responseRetryCount = 0;
+    let connectTimeoutRetryCount = 0;
+
+    while (true) {
       // 超时从真实发起时开始计算，排队时间不会挤占单次请求预算。
-      const response = await this.scheduler.schedule(() =>
-        this.fetchImpl(`${NOTION_API_BASE_URL}${path}`, {
-          ...init,
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-            "Notion-Version": NOTION_API_VERSION,
-            ...(init.body ? { "Content-Type": "application/json" } : {}),
-            ...init.headers,
-          },
-          signal: AbortSignal.timeout(this.timeoutMs),
-        }),
-      );
+      let response: Response;
+      try {
+        response = await this.scheduler.schedule(() =>
+          this.fetchImpl(`${NOTION_API_BASE_URL}${path}`, {
+            ...init,
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              "Notion-Version": NOTION_API_VERSION,
+              ...(init.body ? { "Content-Type": "application/json" } : {}),
+              ...init.headers,
+            },
+            signal: AbortSignal.timeout(this.timeoutMs),
+          }),
+        );
+      } catch (error) {
+        // 建连超时不增加额外退避；共享调度器仍会维持 Notion 的全局请求速率。
+        if (
+          isConnectTimeoutError(error) &&
+          connectTimeoutRetryCount < MAX_CONNECT_TIMEOUT_RETRIES
+        ) {
+          connectTimeoutRetryCount += 1;
+          continue;
+        }
+        throw error;
+      }
 
       if (response.ok) return (await response.json()) as T;
 
       const retryable = response.status === 429 || response.status >= 500;
-      if (retryable && attempt < this.maxRetries) {
-        await wait(readRetryDelay(response, attempt));
+      if (retryable && responseRetryCount < this.maxRetries) {
+        await wait(readRetryDelay(response, responseRetryCount));
+        responseRetryCount += 1;
         continue;
       }
 
@@ -271,7 +308,5 @@ export class NotionClient {
         response.headers.get("x-request-id"),
       );
     }
-
-    throw new Error("Notion API 重试流程异常结束");
   }
 }
