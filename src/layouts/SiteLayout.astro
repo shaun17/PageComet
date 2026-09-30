@@ -1,4 +1,6 @@
 ---
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import "../styles/global.css";
 import { siteConfig } from "../config/runtime-site-config";
 
@@ -33,6 +35,12 @@ const pageTitle = title
   ? `${title} — ${siteConfig.brand.name}`
   : siteConfig.brand.browserTitle;
 const socialTitle = title ? pageTitle : siteConfig.brand.socialTitle;
+// 图标地址由构建时的实际内容决定，替换图片后浏览器会请求新版本而不会复用旧缓存。
+const faviconVersion = createHash("sha256")
+  .update(readFileSync("public/favicon.svg"))
+  .digest("hex")
+  .slice(0, 12);
+const faviconUrl = `/favicon.svg?v=${faviconVersion}`;
 // Astro.site 由站点配置固定，构建时为每个静态页面生成唯一规范地址。
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const siteUrl = new URL("/", Astro.site);
@@ -160,7 +168,7 @@ const structuredDataJson = noindex
     {content?.image && <meta name="twitter:image:alt" content={content.image.alt} />}
     <link rel="canonical" href={canonicalUrl} />
     <title>{pageTitle}</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href={faviconUrl} type="image/svg+xml" sizes="any" />
     <link
       rel="preload"
       href="/fonts/geist-98bbbccb.woff2"

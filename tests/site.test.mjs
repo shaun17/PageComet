@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { PROJECT_META } from "../src/config/project-meta.mjs";
@@ -669,6 +670,25 @@ test("keeps generated files static and credential-free", async () => {
   assert.doesNotMatch(output, /secure\.notion-static\.com|notionusercontent\.com/i);
   assert.doesNotMatch(output, /https:\/\/[^/"']+\.notion\.site\//i);
   assert.doesNotMatch(output, /_next|codex-preview|react-loading-skeleton/i);
+});
+
+/** 所有页面按实际图标内容生成版本地址，避免替换图片后浏览器继续使用旧缓存。 */
+test("versions every page favicon by its shipped content", async () => {
+  const icon = await readFile(new URL("favicon.svg", buildRoot));
+  const version = createHash("sha256").update(icon).digest("hex").slice(0, 12);
+  const names = (await readdir(buildRoot, { recursive: true })).filter((name) =>
+    name.endsWith(".html"),
+  );
+  assert.ok(names.length > 1);
+  for (const name of names) {
+    const html = await readRoute(name);
+    const link = html.match(/<link\b[^>]*rel="icon"[^>]*>/)?.[0];
+    assert.ok(link, `${name} 缺少浏览器图标`);
+    assert.ok(
+      link.includes(`href="/favicon.svg?v=${version}"`),
+      `${name} 的图标地址必须随实际内容变化`,
+    );
+  }
 });
 
 /** Cloudflare Pages 配置、缓存响应头和本地字体随构建一起交付。 */
