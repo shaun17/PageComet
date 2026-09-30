@@ -1,12 +1,5 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <title>PageComet</title>
-  <rect width="64" height="64" rx="16" fill="#000000" />
-
-  <!-- 三条短、中、长的粗线，代表页面中的文本内容。 -->
-  <path d="M12 34H22" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
-  <path d="M12 43H30" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
-  <path d="M12 52H38" stroke="#FFF9ED" stroke-width="5" stroke-linecap="round" />
-
-  <!-- 四角星回到右上角，与左下文本线形成紧凑的斜向构图。 -->
-  <path d="M43 10C44.6 17.4 48.6 21.4 56 23C48.6 24.6 44.6 28.6 43 36C41.4 28.6 37.4 24.6 30 23C37.4 21.4 41.4 17.4 43 10Z" fill="#FFF9ED" />
+  <!-- 折页与连续弧线共同构成 PageComet 品牌标志，图片内嵌以保留原有图标地址。 -->
+  <image width="128" height="128" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAAMFBMVEX+/fgWICH//fr////7+vYIExQQGxuusrAiLC2NkZDp6ec4QUHZ2tdWXl5yeXjDxcP2MtKkAAAACXBIWXMAAAsSAAALEgHS3X78AAAEnUlEQVRoge1ZT4gbVRh/TD7wJPIOMw0U2yEJCD0tmcCyIWuGeQ9KcRVymNhFupBDhoi0l6V6sYUeWgWtKGXVy7LQCNYIlj1kW10V61ykIEVK9qDoZbUW8RbpxYMymXmTN3/y5iXgtrv1d5lld75vft/f971vERJBR48IlP9Qt472AIAeB5j7KUmUPU0A5dEppjiyielov0F52ASQ0Gn6vvCzLvgbUEpnb4NAzYJRLszaL4AWjUqv1/uozFrOdPEGy1g6/9PNC/m33i3NzfL9XPX8pt10MHaW66vT93bIPXXfbuEROtbXldHvppEnx3eavjjGeXftSjQU2c4g8/0Gk8cd99byiIJ8ItDazlged9wn2zEKEyV9QOU9Th7nv104uVKZJhvI97w87rg1rE6gkAqYv8jL445rDfBylIIw/cn7QfzCKJC1gAKVMcR8NmLASMF3OE5BQAD9FpXHHZcuNuS9QOMEcN6lCw15CiROwFNQu4BlKYD3sbgJJhlgWQrkAU5TsIYlKUD1UkJB3jXJrYYkBVhMWICxa6KFTbslRYGcTcqrqyYiS+c27dbLlUwCx7ZSFOyaCIrG0vole3fKGGjO6HG0QimlufL19SNz1mRhHSFkXePKoN3Mv6l5fa0zNAJ8MsxwI/HCFcC+vHG7d2f9YgNrpz94zcfrVzMsKI1d0L7RNYyCYXy81cKqzfBjSaxgPrRAvZEreZbT4jN9ziunxHGAcSGtdIOY09wLDpdUV4VOUD5lDJzVkCvk/h6HJu+acoVwiMtaqN5riRXoiSBoq/x7Vr0vy2AQvDcuG+8J5DPmhnxXnAj9IAR3aeQYgyJzg1gBsFpuxYlS5gamIL2tQ43FMBFt5gaxD6Duf0Z7O5ku5IQqYUK9EdYv957JZcMrllDBfCMliPyJq70oTGUIFHRS85XWfnAOc6r1yQpOpX4GSO2fvzJqqd6YEIRAg1EWpxEEUYgNNKEQZE2tEORB0lNZ54ESzUSxq4XYmlGBGa3GjKFOALImioKMglf9PCjNrOBaS6ZrCLDYYKfpbJdd8I9G9e60DPRYJh1N86LUhEQGE6sJFBkN5GyyIfhpCkWaUUkjKM+NwqB9EQ8k5E5s/1mx+LtGqmeBdYS56NeAHO87J/2rky5zvqu7vMEApN5vYe0MERuhj3MRr/AGg1Xf8UxTv6xIj3nqr+PTFazavaBZik9GD3AsOJxeGpaCl6lV/TA42BIpmgJmg3akO0epd/cuhvLJI08XDHrqO98YRqFoGNfvhzdIqU5D2LjfPvz77V7vzvpWKK9ekakR63lGWLPz2zdHg2I4NUjIIygNuEmVm6+wk+FCPUEhCvVQQECUigpCqFRKXHr8wGYmAQT9mS7wxBnaf4g9oBTGPxNuMAwNeCNWzaIVAFSD1OXkz7DJVWg+g1kfRG+/6umhfKvXvfJ/YrzA8Ox/eih569RTVii43fzcnWp94IGOlji24zh28/IGmVoe+Wukn7e3v/plo2uAOeMiq0ypaRiVGbZp4SqtoFOppcMkgAn7bGf/eP5/BXkO2LMlsRJ5/I+DB+VhEzhAgIMVA2Vv1PwL7kFelkxQOEcAAAAASUVORK5CYII=" />
 </svg>
