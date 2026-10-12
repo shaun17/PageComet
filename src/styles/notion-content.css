@@ -11,6 +11,7 @@
 .notion-content .notion-todo,
 .notion-content .notion-callout,
 .notion-content .notion-code,
+.notion-content .notion-diagram,
 .notion-content .notion-image,
 .notion-content .notion-media,
 .notion-content .notion-table-wrap {
@@ -51,41 +52,20 @@
   text-underline-offset: 0.2em;
 }
 
-/* 正文 URL 统一呈现为紧凑 mention，避免长链接看起来像一段普通文本。 */
+/* 正文链接保持正文字体与行内节奏，只用细下划线标识；悬浮或聚焦时下划线加深。 */
 .notion-content .notion-mention {
-  display: inline-flex;
-  max-width: 100%;
-  padding: 0.08em 0.42em;
-  border: 1px solid var(--line);
-  border-radius: 0.32em;
-  align-items: baseline;
-  gap: 0.35em;
-  background: var(--surface-subtle);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.84em;
-  font-weight: 500;
-  line-height: 1.55;
-  text-decoration: none;
-  vertical-align: 0.04em;
-  transition: border-color 160ms ease, background-color 160ms ease;
-}
-
-.notion-content .notion-mention-native {
-  border-color: var(--line-strong);
-}
-
-.notion-content .notion-mention-mark {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 0.88em;
-  font-weight: 600;
-}
-
-.notion-content .notion-mention-label {
-  min-width: 0;
   overflow-wrap: anywhere;
-  word-break: break-word;
+  text-decoration-line: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color 160ms ease;
+}
+
+/* 没有链接的 Notion 原生提及（日期、人员等）只作普通文本，不伪装成可点击元素。 */
+.notion-content span.notion-mention-native {
+  text-decoration: none;
 }
 
 .notion-content .notion-mention > .notion-mention-label > code {
@@ -94,19 +74,13 @@
 }
 
 .notion-content a.notion-mention:focus-visible {
-  border-color: var(--line-strong);
-  border-radius: 0.32em;
+  text-decoration-color: currentColor;
   outline-offset: 0.18rem;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .notion-content a.notion-mention:hover {
-    border-color: var(--line-strong);
-    background: transparent;
-  }
-
-  .notion-content a.notion-mention:hover .notion-mention-mark {
-    color: currentColor;
+    text-decoration-color: currentColor;
   }
 }
 
@@ -202,10 +176,9 @@
 @media (min-width: 601px) and (hover: hover) and (pointer: fine) {
   .notion-content .notion-link:not(.notion-link-card) {
     position: relative;
-    display: inline-flex;
+    display: inline;
     width: auto;
     margin: 0;
-    vertical-align: 0.04em;
   }
 
   .notion-content .notion-link:not(.notion-link-card) .notion-link-preview {
@@ -365,6 +338,43 @@
   background: var(--surface-subtle);
 }
 
+/* Mermaid 图在构建期输出为无内联样式的 SVG，配色全部从站点变量派生，深浅色自动跟随。 */
+.notion-diagram-canvas {
+  overflow-x: auto;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.notion-diagram svg {
+  --bg: var(--page-background);
+  --fg: var(--text-primary);
+  --_text: var(--fg);
+  --_text-sec: color-mix(in srgb, var(--fg) 60%, var(--bg));
+  --_text-muted: color-mix(in srgb, var(--fg) 40%, var(--bg));
+  --_text-faint: color-mix(in srgb, var(--fg) 25%, var(--bg));
+  --_line: color-mix(in srgb, var(--fg) 45%, var(--bg));
+  --_arrow: color-mix(in srgb, var(--fg) 80%, var(--bg));
+  --_node-fill: color-mix(in srgb, var(--fg) 3%, var(--bg));
+  --_node-stroke: color-mix(in srgb, var(--fg) 22%, var(--bg));
+  --_group-fill: var(--bg);
+  --_group-hdr: color-mix(in srgb, var(--fg) 5%, var(--bg));
+  --_inner-stroke: color-mix(in srgb, var(--fg) 12%, var(--bg));
+  --_key-badge: color-mix(in srgb, var(--fg) 10%, var(--bg));
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.notion-diagram svg text {
+  font-family: var(--font-sans);
+}
+
+.notion-diagram svg .mono {
+  font-family: var(--font-mono);
+}
+
 .notion-code pre {
   overflow-x: auto;
   margin: 0;
@@ -375,6 +385,7 @@
 }
 
 .notion-code figcaption,
+.notion-diagram figcaption,
 .notion-image figcaption,
 .notion-media figcaption {
   padding-top: 0.65rem;
@@ -537,6 +548,12 @@
   .notion-content {
     font-size: 1rem;
     line-height: 1.85;
+  }
+
+  /* 窄屏保留图表原始尺寸并横向滚动，避免整图缩小后文字无法阅读。 */
+  .notion-diagram svg {
+    max-width: none;
+    margin: 0;
   }
 
   .notion-image,

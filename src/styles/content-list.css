@@ -35,16 +35,17 @@
   line-height: 1.2;
 }
 
-.content-list-arrow {
-  display: inline-block;
-  margin-left: 0.25em;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.65em;
-  transform: translate(-0.1rem, 0.1rem);
-  transition:
-    color 160ms ease,
-    transform 160ms ease;
+/* 整行都是链接，标题只在悬浮或键盘聚焦时出现细下划线，不再用箭头暗示跳转。 */
+.content-list-title {
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 160ms ease;
+}
+
+.content-list li > a:focus-visible .content-list-title {
+  text-decoration-color: currentColor;
 }
 
 .content-list-summary,
@@ -77,9 +78,8 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .content-list li > a:hover .content-list-arrow {
-    color: var(--text-primary);
-    transform: translate(0, 0);
+  .content-list li > a:hover .content-list-title {
+    text-decoration-color: currentColor;
   }
 }
 

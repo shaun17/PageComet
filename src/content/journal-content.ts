@@ -41,3 +41,32 @@ export const partitionJournalContent = (blocks: ContentBlock[]): JournalContentP
 
   return { textBlocks, attachmentBlocks };
 };
+
+/** 流水账条目在时间流中的锚点 id，首页目录和时间流共用同一规则。 */
+export const getJournalAnchorId = (entryId: string): string =>
+  `journal-time-${entryId.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`;
+
+/** 首页目录只需要一句话的提示，按字符截断，避免整段正文进入首页 HTML。 */
+const JOURNAL_EXCERPT_LENGTH = 40;
+
+/** 取一条流水账里第一段非空文字作为摘录，跳过图片、视频等素材块。 */
+export const getJournalExcerpt = (blocks: ContentBlock[]): string | null => {
+  for (const block of blocks) {
+    if (isJournalAttachmentBlock(block)) continue;
+    const text = block.richText
+      .map((item) => item.plainText)
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text) {
+      // 用码点切分，避免把 emoji 等代理对截成乱码。
+      const characters = Array.from(text);
+      return characters.length > JOURNAL_EXCERPT_LENGTH
+        ? `${characters.slice(0, JOURNAL_EXCERPT_LENGTH).join("")}…`
+        : text;
+    }
+    const nested = getJournalExcerpt(block.children);
+    if (nested) return nested;
+  }
+  return null;
+};

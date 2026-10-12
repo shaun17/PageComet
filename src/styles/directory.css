@@ -86,12 +86,22 @@
   min-width: 0;
 }
 
+/* 标题用正文字体并取消等宽字距，中文与中英混排在窄栏里更紧凑易读。 */
 .directory-link-title {
   display: block;
   min-width: 0;
   overflow: hidden;
+  font-family: var(--font-sans);
+  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 流水账日期沿用目录的等宽数字，作为摘录前的弱化前缀。 */
+.directory-link-date {
+  flex: 0 0 auto;
+  margin-inline-end: 0.75em;
+  color: var(--text-muted);
 }
 
 .directory-links .more-link {

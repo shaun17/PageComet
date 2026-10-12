@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "astro": "^7.3.8",
+    "beautiful-mermaid": "1.1.3",
     "linkpeek": "2.1.1",
     "proper-lockfile": "4.1.2",
     "sharp": "0.35.5",

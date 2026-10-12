@@ -212,6 +212,29 @@ const INTERNAL_ARTICLE: ContentEntry = {
       language: "shell",
       caption: [text("一次完整的内容构建")],
     },
+    {
+      ...block("mermaid-flow", "code", [
+        text(
+          [
+            "graph TB",
+            "  subgraph 写作",
+            '    A["Notion 数据库"]',
+            "  end",
+            "  subgraph 发布",
+            '    B["静态构建"]',
+            '    C["Cloudflare Pages"]',
+            "  end",
+            "  A --> B --> C",
+          ].join("\n"),
+        ),
+      ]),
+      language: "mermaid",
+      caption: [text("内容发布流程")],
+    },
+    {
+      ...block("mermaid-unsupported", "code", [text('pie title 时间分配\n  "写作": 60')]),
+      language: "mermaid",
+    },
     block("escaped", "paragraph", [
       text('安全转义示例：<script>alert("xss")</script>', "javascript:alert(1)"),
     ]),

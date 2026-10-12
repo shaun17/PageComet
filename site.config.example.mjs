@@ -81,7 +81,7 @@ export const siteConfig = defineSiteConfig({
     prefix: "Design inspired by",
     label: "Ryo Lu",
     href: "https://ryo.lu/",
-    suffix: "↗",
+    suffix: "",
   },
   features: {
     linkPreviews: true,

@@ -56,7 +56,7 @@ const extractDirectoryColumn = (html, category) =>
 /** 提取一列中真实文章的链接与标题，不把最终的“更多”混入内容快照。 */
 const extractDirectoryEntries = (column) =>
   [...column.matchAll(
-    /<li data-directory-entry><a href="([^"]+)"><span class="directory-link-title">([^<]+)<\/span><\/a><\/li>/g,
+    /<li data-directory-entry><a href="([^"]+)"[^>]*>(?:<span class="directory-link-date"[^>]*>[^<]*<\/span>)?<span class="directory-link-title">([^<]+)<\/span><\/a><\/li>/g,
   )].map((match) => ({ href: match[1], title: match[2] }));
 
 /** 把公开配置文字转换为 HTML 文本节点中的安全表示。 */
@@ -169,7 +169,7 @@ test("builds consistent four-column directory previews on the homepage", async (
     assert.doesNotMatch(anchor, /target=/);
   }
 
-  const expectedEntryCounts = { career: 2, works: 4, writing: 1, journal: 0 };
+  const expectedEntryCounts = { career: 2, works: 4, writing: 1, journal: 1 };
   for (const category of siteConfig.categories) {
     const column = extractDirectoryColumn(html, category.key);
     const categoryPath = `/${category.key}/`;
@@ -186,6 +186,16 @@ test("builds consistent four-column directory previews on the homepage", async (
       ),
     );
   }
+
+  // 流水账栏展示「月.日 + 首句摘录」，并链接到时间流中对应条目的锚点。
+  const journalColumn = extractDirectoryColumn(html, "journal");
+  assert.match(
+    journalColumn,
+    /<a href="\/journal\/#journal-time-d1111111-1111-4111-8111-111111111111" aria-label="07\.19 今天把零散的念头放进同一条时间流里。[^"]{1,40}…"/,
+  );
+  assert.match(journalColumn, /<span class="directory-link-date" aria-hidden="true">07\.19<\/span>/);
+  const journalPage = await readRoute("journal/index.html");
+  assert.match(journalPage, /<time id="journal-time-d1111111-1111-4111-8111-111111111111"/);
 
   const worksColumn = extractDirectoryColumn(html, "works");
   assert.equal((worksColumn.match(/<li\b/g) ?? []).length, 5);
@@ -218,12 +228,6 @@ test("builds consistent four-column directory previews on the homepage", async (
     ),
     "长标题应完整保留在最终 HTML，只由 CSS 显示省略号",
   );
-
-  const journalColumn = extractDirectoryColumn(html, "journal");
-  assert.match(journalColumn, /class="directory-links"/);
-  assert.ok(findAnchor(journalColumn, "/journal/"));
-  assert.doesNotMatch(journalColumn, /data-directory-entry/);
-  assert.equal((journalColumn.match(/<a\b/g) ?? []).length, 1);
 
   for (const contact of siteConfig.contacts) {
     const anchor = findAnchor(html, contact.href);
@@ -342,20 +346,19 @@ test("builds article indexes and the journal feed", async () => {
   assert.ok(findAnchor(works, "/works/atlas-notes/"));
   for (const html of [career, works, writing, journal]) {
     assert.match(html, /class="back-link"/);
-    assert.match(
-      html,
-      /class="back-link-arrow" aria-hidden="true">←<\/span><span>首页<\/span>/,
-    );
+    assert.match(html, /class="back-link"[^>]*><span>首页<\/span><\/a>/);
+    // 返回、列表和页脚这些站点级跳转只靠文字与下划线表达，不再拼接装饰箭头。
+    const pageNavigation = html.match(/<nav class="page-navigation"[\s\S]*?<\/nav>/)?.[0] ?? "";
+    const footer = html.match(/<footer[\s\S]*?<\/footer>/)?.[0] ?? "";
+    const contentList = html.match(/<section class="content-list"[\s\S]*?<\/section>/)?.[0] ?? "";
+    assert.ok(pageNavigation && footer);
+    assert.doesNotMatch(pageNavigation + footer + contentList, /[←→↗]/);
   }
   assert.equal((exampleCareer.match(/class="back-link"/g) ?? []).length, 2);
-  assert.equal(
-    (exampleCareer.match(/class="back-link-arrow" aria-hidden="true">←<\/span>/g) ?? [])
-      .length,
-    2,
-  );
+  assert.doesNotMatch(exampleCareer, /back-link-arrow|project-link-arrow/);
   assert.match(
     notFound,
-    /class="back-link not-found-return"[^>]*>[\s\S]*?class="back-link-arrow" aria-hidden="true">←<\/span><span>返回首页<\/span>/,
+    /class="back-link not-found-return"[^>]*><span>返回首页<\/span><\/a>/,
   );
 
   assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
@@ -403,6 +406,7 @@ test("builds article indexes and the journal feed", async () => {
   );
   assert.match(exampleWork, /<nav class="project-links" aria-label="项目链接">/);
   assert.doesNotMatch(exampleWork, /project-links-label/);
+  assert.doesNotMatch(extractProjectLinks(exampleWork), /project-link-arrow|[←→↗]/);
   assert.ok(
     exampleWork.indexOf('class="article-divider"') <
       exampleWork.indexOf('class="project-links"'),
@@ -568,8 +572,16 @@ test("builds article indexes and the journal feed", async () => {
   assert.match(externalMentionAnchor, /aria-describedby="notion-link-preview-\d+-1"/);
   assert.match(
     journal,
-    /<span class="notion-mention-mark" aria-hidden="true">↗<\/span><span class="notion-mention-label">示例产品<\/span>/,
+    /aria-describedby="notion-link-preview-\d+-1"><span class="notion-mention-label">示例产品<\/span>/,
   );
+  // Mermaid 代码块在构建期变成静态 SVG；不支持的图表类型保留源码。
+  assert.match(
+    journal,
+    /<figure class="notion-diagram"><div class="notion-diagram-canvas"><svg role="img" aria-label="内容发布流程"/,
+  );
+  assert.match(journal, /<figcaption>内容发布流程<\/figcaption>/);
+  assert.doesNotMatch(journal, /<code data-language="mermaid">graph TB/);
+  assert.match(journal, /<code data-language="mermaid">pie title 时间分配/);
   assert.match(
     journal,
     /class="notion-link-preview-a11y" hidden>Example。用于验证正文链接摘要/,
@@ -829,19 +841,10 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(backLinkRule);
   assert.match(backLinkRule, /display:inline-flex/);
   assert.match(backLinkRule, /align-items:baseline/);
-  assert.match(backLinkRule, /gap:\.42em/);
-  const backLinkArrowRule = css.match(/\.back-link-arrow\{([^}]*)\}/)?.[1];
-  assert.ok(backLinkArrowRule);
-  assert.match(backLinkArrowRule, /display:inline-block/);
-  assert.match(backLinkArrowRule, /transition:transform \.22s cubic-bezier\(\.16,1,\.3,1\)/);
-  assert.match(
-    css,
-    /\.back-link:focus-visible \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
-  );
-  assert.match(
-    css,
-    /\.back-link:hover \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
-  );
+  assert.match(backLinkRule, /text-decoration-color:(?:transparent|#0000)/);
+  assert.doesNotMatch(css, /\.back-link-arrow|\.content-list-arrow|\.project-link-arrow/);
+  assert.match(css, /\.back-link:hover\{[^}]*text-decoration-color:currentColor/);
+  assert.match(css, /\.content-list li>a:hover \.content-list-title\{text-decoration-color:currentColor\}/);
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:57\.5rem/);
@@ -920,19 +923,21 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.match(css, /--surface-subtle:/);
   const mentionRule = css.match(/\.notion-content \.notion-mention\{([^}]*)\}/)?.[1];
   assert.ok(mentionRule);
-  assert.match(mentionRule, /display:inline-flex/);
-  assert.match(mentionRule, /max-width:100%/);
-  assert.match(mentionRule, /background:var\(--surface-subtle\)/);
-  const mentionLabelRule = css.match(
-    /\.notion-content \.notion-mention-label\{([^}]*)\}/,
-  )?.[1];
-  assert.ok(mentionLabelRule);
-  assert.match(mentionLabelRule, /min-width:0/);
-  assert.match(mentionLabelRule, /overflow-wrap:anywhere/);
+  // 正文链接是普通行内文字链接：无胶囊边框和底色，只有可加深的细下划线。
+  assert.doesNotMatch(mentionRule, /border:|background:|display:inline-flex/);
+  assert.match(mentionRule, /overflow-wrap:anywhere/);
+  assert.match(mentionRule, /text-decoration-color:var\(--line-strong\)/);
   assert.match(
     css,
-    /\.notion-content a\.notion-mention:hover\{border-color:var\(--line-strong\);/,
+    /\.notion-content a\.notion-mention:hover\{text-decoration-color:currentColor\}/,
   );
+  // 时间流的列表样式只作用于自身，不能漏到正文里的有序/无序列表。
+  assert.match(css, /\.journal-feed>ol>li\{border-bottom:1px solid var\(--line\)\}/);
+  assert.doesNotMatch(css, /\.journal-feed li\{|\.journal-feed ol\{/);
+  // 首页目录标题用正文字体并取消等宽字距。
+  assert.match(css, /\.directory-link-title\{[^}]*font-family:var\(--font-sans\)/);
+  // Mermaid 图的配色变量由站点样式表提供。
+  assert.match(css, /\.notion-diagram svg\{[^}]*--fg:var\(--text-primary\)/);
   const linkRule = css.match(/\.notion-content \.notion-link\{([^}]*)\}/)?.[1];
   assert.ok(linkRule);
   assert.match(linkRule, /display:grid/);

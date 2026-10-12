@@ -20,23 +20,20 @@
 .back-link {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.42em;
   color: var(--text-muted);
-  transition: color 160ms ease;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease;
 }
 
-/* 返回箭头独立位移，文字和链接点击区域保持稳定，避免悬浮时整行跳动。 */
-.back-link-arrow {
-  display: inline-block;
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
+/* 返回链接没有方向箭头，聚焦和悬浮时同时加深文字并显出下划线，点击区域保持不动。 */
 .back-link:focus-visible {
   color: var(--text-primary);
-}
-
-.back-link:focus-visible .back-link-arrow {
-  transform: translateX(-0.22rem);
+  text-decoration-color: currentColor;
 }
 
 /* 返回首页与目录主体使用正常分组间距，避免目录页顶部形成无内容的大块内边距。 */
@@ -97,10 +94,7 @@
 @media (hover: hover) and (pointer: fine) {
   .back-link:hover {
     color: var(--text-primary);
-  }
-
-  .back-link:hover .back-link-arrow {
-    transform: translateX(-0.22rem);
+    text-decoration-color: currentColor;
   }
 }
 

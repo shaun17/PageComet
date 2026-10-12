@@ -33,12 +33,6 @@ export const normalizeContentHref = (
   }
 };
 
-/** 给不同链接类别提供不依赖颜色的简短方向标记。 */
-export const getContentHrefMark = (href: SafeContentHref): string => {
-  if (href.kind === "email") return "@";
-  return href.kind === "external" ? "↗" : "→";
-};
-
 /** 判断作者文本是否只是原始 URL，供预览标题替换冗长地址。 */
 export const isRawUrlLabel = (label: string, href: string): boolean => {
   try {
