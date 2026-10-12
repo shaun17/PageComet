@@ -342,20 +342,19 @@ test("builds article indexes and the journal feed", async () => {
   assert.ok(findAnchor(works, "/works/atlas-notes/"));
   for (const html of [career, works, writing, journal]) {
     assert.match(html, /class="back-link"/);
-    assert.match(
-      html,
-      /class="back-link-arrow" aria-hidden="true">←<\/span><span>首页<\/span>/,
-    );
+    assert.match(html, /class="back-link"[^>]*><span>首页<\/span><\/a>/);
+    // 返回、列表和页脚这些站点级跳转只靠文字与下划线表达，不再拼接装饰箭头。
+    const pageNavigation = html.match(/<nav class="page-navigation"[\s\S]*?<\/nav>/)?.[0] ?? "";
+    const footer = html.match(/<footer[\s\S]*?<\/footer>/)?.[0] ?? "";
+    const contentList = html.match(/<section class="content-list"[\s\S]*?<\/section>/)?.[0] ?? "";
+    assert.ok(pageNavigation && footer);
+    assert.doesNotMatch(pageNavigation + footer + contentList, /[←→↗]/);
   }
   assert.equal((exampleCareer.match(/class="back-link"/g) ?? []).length, 2);
-  assert.equal(
-    (exampleCareer.match(/class="back-link-arrow" aria-hidden="true">←<\/span>/g) ?? [])
-      .length,
-    2,
-  );
+  assert.doesNotMatch(exampleCareer, /back-link-arrow|project-link-arrow/);
   assert.match(
     notFound,
-    /class="back-link not-found-return"[^>]*>[\s\S]*?class="back-link-arrow" aria-hidden="true">←<\/span><span>返回首页<\/span>/,
+    /class="back-link not-found-return"[^>]*><span>返回首页<\/span><\/a>/,
   );
 
   assert.match(exampleCareer, /<h1>Northstar Studio<\/h1>/);
@@ -403,6 +402,7 @@ test("builds article indexes and the journal feed", async () => {
   );
   assert.match(exampleWork, /<nav class="project-links" aria-label="项目链接">/);
   assert.doesNotMatch(exampleWork, /project-links-label/);
+  assert.doesNotMatch(extractProjectLinks(exampleWork), /project-link-arrow|[←→↗]/);
   assert.ok(
     exampleWork.indexOf('class="article-divider"') <
       exampleWork.indexOf('class="project-links"'),
@@ -829,19 +829,10 @@ test("keeps Cloudflare Pages Direct Upload configuration deployable", async () =
   assert.ok(backLinkRule);
   assert.match(backLinkRule, /display:inline-flex/);
   assert.match(backLinkRule, /align-items:baseline/);
-  assert.match(backLinkRule, /gap:\.42em/);
-  const backLinkArrowRule = css.match(/\.back-link-arrow\{([^}]*)\}/)?.[1];
-  assert.ok(backLinkArrowRule);
-  assert.match(backLinkArrowRule, /display:inline-block/);
-  assert.match(backLinkArrowRule, /transition:transform \.22s cubic-bezier\(\.16,1,\.3,1\)/);
-  assert.match(
-    css,
-    /\.back-link:focus-visible \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
-  );
-  assert.match(
-    css,
-    /\.back-link:hover \.back-link-arrow\{transform:translate(?:X)?\(-\.22rem\)\}/,
-  );
+  assert.match(backLinkRule, /text-decoration-color:(?:transparent|#0000)/);
+  assert.doesNotMatch(css, /\.back-link-arrow|\.content-list-arrow|\.project-link-arrow/);
+  assert.match(css, /\.back-link:hover\{[^}]*text-decoration-color:currentColor/);
+  assert.match(css, /\.content-list li>a:hover \.content-list-title\{text-decoration-color:currentColor\}/);
   const articleShellRule = css.match(/\.article-shell\{([^}]*)\}/)?.[1];
   assert.ok(articleShellRule);
   assert.match(articleShellRule, /--article-content-width:57\.5rem/);

@@ -25,9 +25,6 @@ const formatDate = (value: string | null): string | null =>
                 <span class="content-list-copy">
                   <span class="content-list-title">
                     {entry.title}
-                    <span class="content-list-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </span>
                   {entry.summary && <span class="content-list-summary">{entry.summary}</span>}
                   <WritingTags entry={entry} placement="list" />

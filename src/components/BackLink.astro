@@ -8,8 +8,7 @@ interface Props {
 const { href, label, class: className } = Astro.props;
 ---
 
-<!-- 箭头只提供视觉方向提示，链接的可访问名称由文字标签完整表达。 -->
+<!-- 返回链接只保留文字，靠位置与悬浮下划线表达可点击，避免装饰箭头抢占视线。 -->
 <a class:list={["back-link", className]} href={href}>
-  <span class="back-link-arrow" aria-hidden="true">←</span>
   <span>{label}</span>
 </a>

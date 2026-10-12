@@ -9,7 +9,7 @@ import { siteConfig } from "../config/runtime-site-config";
   <div class="footer-attribution">
     <p class="design-credit">
       <span>{siteConfig.designCredit.prefix}</span>
-      <a class="animated-underline" href={siteConfig.designCredit.href} target="_blank" rel="noopener noreferrer">{siteConfig.designCredit.label} {siteConfig.designCredit.suffix && <span aria-hidden="true">{siteConfig.designCredit.suffix}</span>}</a>
+      <a class="animated-underline" href={siteConfig.designCredit.href} target="_blank" rel="noopener noreferrer">{siteConfig.designCredit.label}{siteConfig.designCredit.suffix && <span aria-hidden="true"> {siteConfig.designCredit.suffix}</span>}</a>
     </p>
     <p class="project-credit">
       <span>Created by {PROJECT_META.creatorName}</span>
@@ -22,7 +22,6 @@ import { siteConfig } from "../config/runtime-site-config";
         aria-label={`在 GitHub 查看 ${PROJECT_META.name} 源代码`}
       >
         <span>GitHub</span>
-        <span aria-hidden="true">↗</span>
       </a>
     </p>
   </div>
