@@ -8,13 +8,14 @@
   animation: content-reveal 420ms 80ms ease-out both;
 }
 
-.journal-feed ol {
+/* 只作用于时间流本身的列表，避免正文里的有序/无序列表丢编号或多出分隔线。 */
+.journal-feed > ol {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.journal-feed li {
+.journal-feed > ol > li {
   border-bottom: 1px solid var(--line);
 }
 

@@ -28,8 +28,8 @@ test("keeps directory breakpoints readable from tablet to mobile", async () => {
   assert.doesNotMatch(styles, /directory-column-entry-only/);
   assert.match(
     component,
-    /<span class="directory-link-title">\{entry\.title\}<\/span>/,
-    "目录应保留完整标题，只在视觉层处理溢出",
+    /aria-label=\{item\.fullTitle === item\.title \? undefined : item\.fullTitle\}[\s\S]*<span class="directory-link-title">\{item\.title\}<\/span>/,
+    "目录展示主标题时必须把完整标题保留为链接的无障碍名称，溢出只在视觉层处理",
   );
 
   const entryRule = styles.match(

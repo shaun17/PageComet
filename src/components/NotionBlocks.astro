@@ -2,6 +2,7 @@
 import type { ContentBlock, ContentRichText } from "../lib/notion";
 import { renderRichText, richTextToPlainText } from "../content/render-rich-text";
 import { normalizeContentHref } from "../content/content-href";
+import { isMermaidLanguage, renderMermaidDiagram } from "../content/mermaid-diagram";
 import NotionLinkPreview from "./NotionLinkPreview.astro";
 import NotionMedia from "./NotionMedia.astro";
 
@@ -140,14 +141,25 @@ const groups = groupBlocks(blocks);
             {item.children.length > 0 && <Astro.self blocks={item.children} />}
           </details>
         )}
-        {item.type === "code" && (
-          <figure class="notion-code">
-            <pre><code data-language={item.language}>{richTextToPlainText(item.richText)}</code></pre>
-            {item.caption && item.caption.length > 0 && (
-              <figcaption>{richTextToPlainText(item.caption)}</figcaption>
-            )}
-          </figure>
-        )}
+        {item.type === "code" && (() => {
+          const source = richTextToPlainText(item.richText);
+          const caption = richTextToPlainText(item.caption);
+          // Mermaid 在构建期转成静态 SVG；类型不支持或渲染失败时仍按普通代码块展示源码。
+          const diagram = isMermaidLanguage(item.language)
+            ? renderMermaidDiagram(source, `diagram-${item.id}`, caption || "Mermaid 图表")
+            : null;
+          return diagram ? (
+            <figure class="notion-diagram">
+              <div class="notion-diagram-canvas" set:html={diagram} />
+              {caption && <figcaption>{caption}</figcaption>}
+            </figure>
+          ) : (
+            <figure class="notion-code">
+              <pre><code data-language={item.language}>{source}</code></pre>
+              {caption && <figcaption>{caption}</figcaption>}
+            </figure>
+          );
+        })()}
         {["image", "video", "audio", "embed"].includes(item.type) && <NotionMedia item={item} />}
         {(item.type === "bookmark" || item.type === "link_preview") &&
           bookmark &&
@@ -169,9 +181,6 @@ const groups = groupBlocks(blocks);
               target={bookmark.external ? "_blank" : undefined}
               rel={bookmark.external ? "noopener noreferrer" : undefined}
             >
-              <span class="notion-mention-mark" aria-hidden="true">
-                {bookmark.external ? "↗" : "→"}
-              </span>
               <span class="notion-mention-label">
                 {richTextToPlainText(item.caption) || item.url}
               </span>

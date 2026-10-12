@@ -1,6 +1,6 @@
 ---
 import type { ContentBlock, JournalEntry } from "../lib/notion";
-import { partitionJournalContent } from "../content/journal-content";
+import { getJournalAnchorId, partitionJournalContent } from "../content/journal-content";
 import { formatJournalTimestamp } from "../lib/journal-time";
 import { siteConfig } from "../config/runtime-site-config";
 import NotionBlocks from "./NotionBlocks.astro";
@@ -37,7 +37,7 @@ const feedItems = entries.map((entry) => {
       siteConfig.locale,
       siteConfig.timeZone,
     ),
-    timeId: `journal-time-${safeId}`,
+    timeId: getJournalAnchorId(entry.id),
     textId: `journal-text-${safeId}`,
   };
 });

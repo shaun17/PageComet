@@ -1,6 +1,5 @@
 import type { ContentRichText } from "../lib/notion";
 import {
-  getContentHrefMark,
   isRawUrlLabel,
   normalizeContentHref,
 } from "./content-href";
@@ -65,26 +64,25 @@ export const renderRichText = (
       const href = normalizeContentHref(item.href);
       if (!href) {
         if (item.type !== "mention") return output;
-        return `<span class="notion-mention notion-mention-native"><span class="notion-mention-mark" aria-hidden="true">@</span><span class="notion-mention-label">${output}</span></span>`;
+        return `<span class="notion-mention notion-mention-native"><span class="notion-mention-label">${output}</span></span>`;
       }
       const nativeMentionClass = item.type === "mention" ? " notion-mention-native" : "";
       const attributes =
         href.kind === "external" ? ' target="_blank" rel="noopener noreferrer"' : "";
-      const mark = getContentHrefMark(href);
       const preview = options.previewMode === "mention" ? undefined : item.linkPreview;
       const usesPreviewTitle = Boolean(
         preview && isRawUrlLabel(item.plainText, href.href),
       );
       const label = preview && usesPreviewTitle ? escapeHtml(preview.title) : output;
       if (!preview) {
-        return `<a class="notion-mention notion-mention-${href.kind}${nativeMentionClass}" href="${escapeHtml(href.href)}"${attributes}><span class="notion-mention-mark" aria-hidden="true">${mark}</span><span class="notion-mention-label">${label}</span></a>`;
+        return `<a class="notion-mention notion-mention-${href.kind}${nativeMentionClass}" href="${escapeHtml(href.href)}"${attributes}><span class="notion-mention-label">${label}</span></a>`;
       }
 
       const previewId = `notion-link-preview-${renderId}-${itemIndex}`;
       const cardClass = options.previewMode === "card" ? " notion-link-card" : "";
       const includeTitleInDescription =
         !usesPreviewTitle && item.plainText.trim() !== preview.title.trim();
-      return `<span class="notion-link${cardClass}"><a class="notion-mention notion-mention-${href.kind}${nativeMentionClass}" href="${escapeHtml(href.href)}"${attributes} aria-describedby="${previewId}"><span class="notion-mention-mark" aria-hidden="true">${mark}</span><span class="notion-mention-label">${label}</span></a>${renderLinkPreview(item, previewId, includeTitleInDescription)}</span>`;
+      return `<span class="notion-link${cardClass}"><a class="notion-mention notion-mention-${href.kind}${nativeMentionClass}" href="${escapeHtml(href.href)}"${attributes} aria-describedby="${previewId}"><span class="notion-mention-label">${label}</span></a>${renderLinkPreview(item, previewId, includeTitleInDescription)}</span>`;
     })
     .join("");
 };

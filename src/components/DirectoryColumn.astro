@@ -1,20 +1,59 @@
 ---
-import type { ContentEntry } from "../lib/notion";
+import type { ContentEntry, JournalEntry } from "../lib/notion";
 import type { CategoryDefinition } from "../content/categories";
-import { selectDirectoryPreviewEntries } from "../content/directory-preview.mjs";
+import {
+  getDirectoryTitle,
+  selectDirectoryPreviewEntries,
+} from "../content/directory-preview.mjs";
+import { getJournalAnchorId, getJournalExcerpt } from "../content/journal-content";
 import { getEntryHref } from "../content/site-content";
+import { readJournalCalendarDate } from "../lib/journal-time";
+import { siteConfig } from "../config/runtime-site-config";
 
 interface Props {
   category: CategoryDefinition;
-  entries: ContentEntry[];
+  entries?: ContentEntry[];
+  /** 流水账没有标题，传入后改为展示「日期 + 首句摘录」并链接到时间流中的对应条目。 */
+  journalEntries?: JournalEntry[];
   headingLevel?: "h2" | "h3";
 }
 
-const { category, entries, headingLevel = "h2" } = Astro.props;
+interface DirectoryItem {
+  href: string;
+  title: string;
+  fullTitle: string;
+  date: string | null;
+}
+
+const { category, entries = [], journalEntries, headingLevel = "h2" } = Astro.props;
 const headingId = `directory-${category.key}`;
 const Heading = headingLevel;
-// 标题不再承担跳转；每个分类统一展示前四项，并把“更多”固定为最终入口。
-const visibleEntries = selectDirectoryPreviewEntries(entries);
+
+/** 文章类条目展示主标题；被截短时把完整标题留给读屏和悬浮提示。 */
+const toArticleItem = (entry: ContentEntry): DirectoryItem => ({
+  href: getEntryHref(entry),
+  title: getDirectoryTitle(entry.title),
+  fullTitle: entry.title,
+  date: null,
+});
+
+/** 流水账条目用站点时区的「月.日」加首句文字，纯素材条目退回 Notion 标题。 */
+const toJournalItem = (entry: JournalEntry): DirectoryItem => {
+  const timestamp = entry.publishedAt ?? entry.createdAt;
+  const date = readJournalCalendarDate(timestamp, siteConfig.timeZone).slice(5).replace("-", ".");
+  const excerpt = getJournalExcerpt(entry.blocks) ?? entry.title;
+  return {
+    href: `${category.path}#${getJournalAnchorId(entry.id)}`,
+    title: excerpt,
+    fullTitle: `${date} ${excerpt}`,
+    date,
+  };
+};
+
+// 每个分类统一展示前四项，并把“更多”固定为最终入口。
+const visibleItems: DirectoryItem[] = journalEntries
+  ? selectDirectoryPreviewEntries(journalEntries).map(toJournalItem)
+  : selectDirectoryPreviewEntries(entries).map(toArticleItem);
 ---
 
 <section
@@ -28,10 +67,15 @@ const visibleEntries = selectDirectoryPreviewEntries(entries);
   </div>
 
   <ul class="directory-links">
-    {visibleEntries.map((entry) => (
+    {visibleItems.map((item) => (
       <li data-directory-entry>
-        <a href={getEntryHref(entry)}>
-          <span class="directory-link-title">{entry.title}</span>
+        <a
+          href={item.href}
+          aria-label={item.fullTitle === item.title ? undefined : item.fullTitle}
+          title={item.fullTitle === item.title ? undefined : item.fullTitle}
+        >
+          {item.date && <span class="directory-link-date" aria-hidden="true">{item.date}</span>}
+          <span class="directory-link-title">{item.title}</span>
         </a>
       </li>
     ))}

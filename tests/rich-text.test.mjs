@@ -41,7 +41,8 @@ test("renders external URLs as safe mention links", () => {
 
   assert.match(html, /^<a class="notion-mention notion-mention-external"/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
-  assert.match(html, /<span class="notion-mention-mark" aria-hidden="true">↗<\/span>/);
+  // 正文链接只保留文字与下划线，不再拼接方向符号。
+  assert.doesNotMatch(html, /notion-mention-mark|[↗→@]<\/span>/);
   assert.match(html, /<span class="notion-mention-label">https:\/\/example\.com\/a-long-path<\/span>/);
 });
 
@@ -106,16 +107,16 @@ test("distinguishes internal, email, and native Notion mentions", () => {
   ]);
 
   assert.match(internal, /class="notion-mention notion-mention-internal"/);
-  assert.match(internal, />→<\/span>/);
   assert.doesNotMatch(internal, /target=/);
   assert.match(email, /class="notion-mention notion-mention-email"/);
-  assert.match(email, />@<\/span>/);
   assert.doesNotMatch(email, /target=/);
   assert.match(
     nativeMention,
     /class="notion-mention notion-mention-internal notion-mention-native"/,
   );
-  assert.match(nativeMention, />→<\/span>/);
+  for (const html of [internal, email, nativeMention]) {
+    assert.doesNotMatch(html, /notion-mention-mark/);
+  }
 });
 
 test("preserves native mention semantics from the Notion API", () => {
@@ -144,7 +145,7 @@ test("preserves native mention semantics from the Notion API", () => {
   );
   assert.equal(
     renderRichText([passiveMention]),
-    '<span class="notion-mention notion-mention-native"><span class="notion-mention-mark" aria-hidden="true">@</span><span class="notion-mention-label">2026-07-19</span></span>',
+    '<span class="notion-mention notion-mention-native"><span class="notion-mention-label">2026-07-19</span></span>',
   );
 });
 

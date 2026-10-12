@@ -1,7 +1,6 @@
 ---
 import type { ContentLinkPreview } from "../lib/notion";
 import {
-  getContentHrefMark,
   isRawUrlLabel,
   normalizeContentHref,
 } from "../content/content-href";
@@ -39,9 +38,6 @@ const accessibleDescription = [
         rel={safeHref.kind === "external" ? "noopener noreferrer" : undefined}
         aria-describedby={previewId}
       >
-        <span class="notion-mention-mark" aria-hidden="true">
-          {getContentHrefMark(safeHref)}
-        </span>
         <span class="notion-mention-label">{visibleLabel}</span>
       </a>
       <span id={previewId} class="notion-link-preview-a11y" hidden>{accessibleDescription}</span>
